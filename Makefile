@@ -1,16 +1,33 @@
-main: src/library/main.o lib/libdisk.a
-	g++ -static src/library/main.o -o bin/main -L./lib -ldisk
+CC=g++
+CFLAGS=-Wall -I./includes
+LDFLAGS=-L./lib -ldisk -lfilesystem
+AR=ar
+ARFLAGS=rcs
+SRC_DIR=src/library
+LIB_DIR=lib
+BIN_DIR=bin
 
-src/library/disk_driver.o: src/library/disk_driver.cpp
-	g++ -Wall -c -I/includes -o src/library/disk_driver.o src/library/disk_driver.cpp
+.PHONY: all clean
 
-lib/libdisk.a: src/library/disk_driver.o
-	ar rcs lib/libdisk.a src/library/disk_driver.o
+all: $(BIN_DIR)/main
 
-main.o: src/library/main.cpp
-	g++ -Wall -c -I/includes -o src/library/main.o src/library/main.cpp
+$(BIN_DIR)/main: $(SRC_DIR)/main.o $(LIB_DIR)/libdisk.a $(LIB_DIR)/libfilesystem.a
+	$(CC) -static $(SRC_DIR)/main.o -o $(BIN_DIR)/main $(LDFLAGS)
 
-.PHONY: clean
+$(SRC_DIR)/main.o: $(SRC_DIR)/main.cpp
+	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/main.o $(SRC_DIR)/main.cpp
+
+$(LIB_DIR)/libdisk.a: $(SRC_DIR)/disk_driver.o
+	$(AR) $(ARFLAGS) $(LIB_DIR)/libdisk.a $(SRC_DIR)/disk_driver.o
+
+$(SRC_DIR)/disk_driver.o: $(SRC_DIR)/disk_driver.cpp
+	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/disk_driver.o $(SRC_DIR)/disk_driver.cpp
+
+$(LIB_DIR)/libfilesystem.a: $(SRC_DIR)/filesystem.o
+	$(AR) $(ARFLAGS) $(LIB_DIR)/libfilesystem.a $(SRC_DIR)/filesystem.o
+
+$(SRC_DIR)/filesystem.o: $(SRC_DIR)/filesystem.cpp
+	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/filesystem.o $(SRC_DIR)/filesystem.cpp
 
 clean:
-	rm src/library/*.o lib/* bin/*
+	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/*
