@@ -152,7 +152,7 @@ ssize_t FileSystem::create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32
     
     Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
 
-    for(int i=0;i<totalInodes;i++){
+    for(int i=0;i<this->totalInodes;i++){
         if(!inodes[i].Valid){
             inodes[i].Valid=1;
             inodes[i].Size=0;
