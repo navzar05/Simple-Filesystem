@@ -5,14 +5,14 @@
 #include "disk_driver.h"
 
 const static uint32_t MAX_FILENAME_LENGTH = 100;
-    const static uint32_t MAGIC_NUMBER = 0x05112002;
+const static uint32_t MAGIC_NUMBER = 0x05112002;
 
 struct SuperBlock {
-    uint32_t MagicNumber;
-    uint32_t Blocks;
-    uint32_t InodeBlocks;
-    uint32_t Inodes;
-    };
+uint32_t MagicNumber;
+uint32_t Blocks;
+uint32_t InodeBlocks;
+uint32_t Inodes;
+};
 
 //un i-node ocupa 128 de octeti
 struct Inode {
@@ -37,12 +37,12 @@ struct statDetails{
     uint32_t Permissions;
 };
 
-union Block {
+/* union Block {
     SuperBlock  Super;
     Inode       *Inodes; //[INODES_PER_BLOCK];
     uint32_t    *Pointers; //[POINTERS_PER_BLOCK];
-    char        *Data; //[Disk::BLOCK_SIZE];
-};
+    char        Data[4096]; //[Disk::BLOCK_SIZE];
+}; */
 
 class FileSystem {
 public:
@@ -51,13 +51,13 @@ public:
     static uint32_t POINTERS_PER_BLOCK; //= 1024;
 
     static bool *bitmap;
-    static Block *superBlock;
-    static Block *inodeBlocks;
+    static char *superBlock;
+    static char *inodeBlocks;
 
-    static void debugInodes(Block block); //pentru debbuging
+    static void debugInodes(char block); //pentru debbuging
     static size_t ceilDiv(size_t a, size_t b);
-    static bool writeBlock(Disk *disk, int blocknum, Block* block);
-    static bool readBlock(Disk *disk, int blocknum, Block* block);
+/*     static bool writeBlock(Disk *disk, int blocknum, Block* block);
+    static bool readBlock(Disk *disk, int blocknum, Block* block); */
 public:
     FileSystem(Disk *disk);
     ~FileSystem();

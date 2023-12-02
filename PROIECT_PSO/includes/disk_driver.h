@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
+
 struct Disk {
     uint32_t descriptor;
     size_t blocks; //numarul de blocuri disponibile pe fisier
@@ -26,8 +28,8 @@ public:
     size_t size() const { return blocks; }
 
 
-    bool so_read(int blocknum, char *data);
-    bool so_write(int blocknum, char *data);
+    bool so_read(size_t blocknum, char *data);
+    bool so_write(size_t blocknum, char *data);
 
 private:
     u_int32_t datalen(char *data);

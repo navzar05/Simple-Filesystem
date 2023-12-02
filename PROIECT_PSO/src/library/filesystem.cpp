@@ -12,25 +12,25 @@ uint32_t FileSystem::INODES_PER_BLOCK = 0;   // Adjust the initial value as need
 uint32_t FileSystem::POINTERS_PER_INODE = 0;  // Adjust the initial value as needed
 uint32_t FileSystem::POINTERS_PER_BLOCK = 0; // Adjust the initial value as needed
 bool *FileSystem::bitmap = nullptr;
-Block *FileSystem::superBlock = nullptr;
-Block *FileSystem::inodeBlocks = nullptr;
+char *FileSystem::superBlock = nullptr;
+char *FileSystem::inodeBlocks = nullptr;
 
 
 //implemented only for direct pointers
-void FileSystem::debugInodes(Block block){
+/* void FileSystem::debugInodes(char block){
     if (block.Inodes->Valid){
         fprintf(stdout, "Size: %d\n", block.Inodes->Size);
         for (int i = 0; i < 5; i ++){
             continue;
         }
     }
-}
+} */
 
 size_t FileSystem::ceilDiv(size_t a, size_t b)
 {
         return (a / b) + ((a % b) != 0);
 }
-bool FileSystem::writeBlock(Disk *disk, int blocknum, Block *block)
+/* bool FileSystem::writeBlock(Disk *disk, int blocknum, Block *block)
 {
     char* blockToWrite = (char*)calloc(Disk::BLOCK_SIZE, sizeof(char));
     if (!blockToWrite) {
@@ -61,61 +61,63 @@ bool FileSystem::readBlock(Disk *disk, int blocknum, Block *block)
 
     return readSuccess;
 }
-
+ */
 FileSystem::FileSystem(Disk *disk)
 {
     this->INODES_PER_BLOCK = disk->BLOCK_SIZE / 128;
     this->POINTERS_PER_INODE = 5;
     this->POINTERS_PER_BLOCK = disk->BLOCK_SIZE / 4;
-    this->bitmap = (bool*)calloc(disk->blocks, sizeof(bool));
-    this->superBlock = (Block*)calloc(1, sizeof(Block));
-    this->inodeBlocks = (Block*)calloc(FileSystem::ceilDiv(disk->blocks, 10), sizeof(Block));
+    this->superBlock = new char[Disk::BLOCK_SIZE];
+    this->inodeBlocks = new char[FileSystem::ceilDiv(disk->blocks, 10) * sizeof(Disk::BLOCK_SIZE)];
 }
 
 FileSystem::~FileSystem()
 {
-    free(this->bitmap);
-    this->bitmap = NULL;
-    free(superBlock);
-    this->superBlock = NULL;
-    free(inodeBlocks);
-    inodeBlocks = NULL;
+    delete bitmap;
+    delete superBlock;
+    delete inodeBlocks;
 }
 
 void FileSystem::debug(Disk *disk)
 {
-        Block block, inode_block;
-        disk->so_read(0, block.Data);
-        if (block.Super.MagicNumber != MAGIC_NUMBER)
-        {
-                fprintf(stderr, "Disk is not formated. Bad magic number: it is %d not %d.\n", block.Super.MagicNumber, MAGIC_NUMBER);
-                return;
-        }
-        else{
-        fprintf(stdout, "Magic number identified.\n");
-        fprintf(stdout, "Superblock:\n");
-        fprintf(stdout, "\tBlocks: %d\n", block.Super.Blocks);
-        fprintf(stdout, "\tInode blocks: %d\n", block.Super.InodeBlocks);
-        fprintf(stdout, "\tInodes: %d\n", block.Super.Inodes);
+    SuperBlock* auxBlock = reinterpret_cast<SuperBlock*>(superBlock);
+    if (auxBlock->MagicNumber != MAGIC_NUMBER)
+    {
+            fprintf(stderr, "Disk is not formated. Bad magic number: it is %d not %d.\n", auxBlock->MagicNumber, MAGIC_NUMBER);
+            return;
+    }
+    else{
+    fprintf(stdout, "Magic number identified.\n");
+    fprintf(stdout, "Superblock:\n");
+    fprintf(stdout, "\tBlocks: %d\n", auxBlock->Blocks);
+    fprintf(stdout, "\tInode blocks: %d\n", auxBlock->InodeBlocks);
+    fprintf(stdout, "\tInodes: %d\n", auxBlock->Inodes);
 
-        //debug inodes
-        for (int i = 1; i < block.Super.InodeBlocks + 1; i ++){
-            disk->so_read(i, inode_block.Data);
-            fprintf(stdout, "Inode %d:", i);
-            FileSystem::debugInodes(inode_block);
-        }
+    //debug inodes
+    /* for (int i = 1; i < block.Super.InodeBlocks + 1; i ++){
+        disk->so_read(i, inode_block.Data);
+        fprintf(stdout, "Inode %d:", i);
+        FileSystem::debugInodes(inode_block);
+    } */
     }
 }
+
 bool FileSystem::format(Disk *disk)
 {
     //clear all data
     ftruncate(disk->descriptor, 0);
-    superBlock->Super.MagicNumber = 0x05112002;
-    superBlock->Super.Blocks = disk->blocks;
-    superBlock->Super.InodeBlocks = ceilDiv(disk->blocks, 10);
-    superBlock->Super.Inodes = superBlock->Super.InodeBlocks * INODES_PER_BLOCK;
-    printf("%d %d %d\n", superBlock->Super.Blocks, superBlock->Super.InodeBlocks, superBlock->Super.Inodes);
-    writeBlock(disk, 0, superBlock);
+    //scriem superblock-ul
+    SuperBlock *auxBlock = reinterpret_cast<SuperBlock*>(superBlock);
+    auxBlock->MagicNumber = 0x05112002;
+    auxBlock->Blocks = disk->blocks;
+    auxBlock->InodeBlocks = ceilDiv(disk->blocks, 10);
+    auxBlock->Inodes = auxBlock->InodeBlocks * INODES_PER_BLOCK;
+    bitmap = new bool[disk->blocks - auxBlock->InodeBlocks - 1];
+
+    //DEBUG
+    //printf("%d %d %d\n", auxBlock->Blocks, auxBlock->InodeBlocks, auxBlock->Inodes);
+    //
+    disk->so_write(0, superBlock);
 }
 
 bool FileSystem::mount(Disk *disk){

@@ -17,7 +17,7 @@ uint32_t Disk::datalen(char *data)
 void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
 {
     if (block_size % 512 != 0) {
-        fprintf(stderr, "Bad block size. It must be a multiple of 512. (block_size = %d)\n", block_size);
+        fprintf(stderr, "Bad block size. It must be a multiple of 512. (block_size = %ld)\n", block_size);
         return;
     }
     this->descriptor = open(path, O_RDWR | O_CREAT, 0666);
@@ -29,11 +29,11 @@ void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
     this->BLOCK_SIZE = block_size;
 }
 
-bool Disk::so_read(int blocknum, char *data)
+bool Disk::so_read(size_t blocknum, char *data)
 {
     int readbytes = 0;
-    if (blocknum > blocks) {
-        fprintf(stderr, "Failed to read data. (blocknum %d, max. index %d)\n", blocknum, blocks);
+    if (blocknum >= blocks) {
+        fprintf(stderr, "Failed to read data. (blocknum %ld, max. index %ld)\n", blocknum, blocks);
         return -1;
     }
 
@@ -43,24 +43,25 @@ bool Disk::so_read(int blocknum, char *data)
     }
 
     lseek(this->descriptor, Disk::BLOCK_SIZE * blocknum, SEEK_SET);
-    //printf("%d\n", lseek(this->descriptor, 0, SEEK_CUR));
-    if (readbytes = read(this->descriptor, data, Disk::BLOCK_SIZE) < 0)
-        fprintf(stderr, "Failed to read block from disk. (blocknum: %d)\n", blocknum);
-    printf("%d\n", readbytes);
+    //printf("%ld\n", lseek(this->descriptor, 0, SEEK_CUR));
+    if ((readbytes = read(this->descriptor, data, Disk::BLOCK_SIZE)) < 0)
+        fprintf(stderr, "Failed to read block from disk. (blocknum: %ld)\n", blocknum);
+    //DEBUG
+    //printf("read bytes in so_read(): %ld\n", readbytes);
     return 0;
 }
 
-bool Disk::so_write(int blocknum, char *data){
+bool Disk::so_write(size_t blocknum, char *data){
 
-    if (blocknum > blocks) {
-        fprintf(stderr, "Failed to write data. (blocknum %d, max. index %d)\n", blocknum, blocks);
+    if (blocknum >= blocks) {
+        fprintf(stderr, "Failed to write data. (blocknum %ld, max. index %ld)\n", blocknum, blocks);
         return -1;
     }
 
-    fprintf(stdout, "Data len: %d\n", Disk::datalen(data));
+    //fprintf(stdout, "Data len: %ld\n", Disk::datalen(data));
     lseek(this->descriptor, this->BLOCK_SIZE * blocknum, SEEK_SET);
     if (write(this->descriptor, data, Disk::BLOCK_SIZE) < 0){
-        fprintf(stderr, "Failed to write to block from disk. (blocknum: %d)\n", blocknum);
+        fprintf(stderr, "Failed to write to block from disk. (blocknum: %ld)\n", blocknum);
     }
     return 0;
 }

@@ -4,11 +4,18 @@
 int main(){
     Disk *disk = new Disk();
     disk->disk_open("./bin/file.txt", 5);
-    Block* block1 = (Block*)calloc(sizeof(Block), 1);
+    char* block1 = new char[Disk::BLOCK_SIZE];
     FileSystem *fs = new FileSystem(disk);
     FileSystem::format(disk);
-    FileSystem::readBlock(disk, 0, block1);
-    printf("Read from file:%x %d %d %d\n", block1->Super.MagicNumber, block1->Super.Blocks, block1->Super.InodeBlocks, block1->Super.Inodes);
+
+    printf("\nDebug function test:\n");
+    FileSystem::debug(disk);
+
+    printf("\nso_read() function test on superblock:\n");
+    disk->so_read(0, block1);
+    SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
+    printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
     delete disk;
     delete fs;
+    delete[] block1;
 }
