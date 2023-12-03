@@ -8,6 +8,12 @@ int main(){
     FileSystem *fs = new FileSystem(disk);
     FileSystem::format(disk);
 
+    printf("\nUnmount test:\n");
+    FileSystem::unmount(disk);
+
+    printf("\nMount test:\n");
+    FileSystem::mount(disk);
+
     printf("\nDebug function test:\n");
     FileSystem::debug(disk);
 
@@ -15,11 +21,11 @@ int main(){
     disk->so_read(0, block1);
     SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
-    
-    
-    char msg[]="Ana nu are mere ca au scumpit capitalistii tot fmm";
-    fs->write(3,msg,sizeof(msg),0);
-    
+
+
+    /* char msg[]="Ana nu are mere ca au scumpit capitalistii tot fmm";
+    fs->fs_write(3,msg,sizeof(msg),0); */
+
     delete disk;
     delete fs;
     delete[] block1;

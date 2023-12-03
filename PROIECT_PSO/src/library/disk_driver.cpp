@@ -6,14 +6,6 @@ Disk::~Disk(){
     close(this->descriptor);
 }
 
-uint32_t Disk::datalen(char *data)
-{
-    uint32_t len = 0;
-    while(data[len] != 0)
-        len++;
-    return len;
-}
-
 void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
 {
     if (block_size % 512 != 0) {

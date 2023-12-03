@@ -30,9 +30,6 @@ public:
 
     bool so_read(size_t blocknum, char *data);
     bool so_write(size_t blocknum, char *data);
-
-private:
-    u_int32_t datalen(char *data);
 };
 
 #endif // DISK_H
