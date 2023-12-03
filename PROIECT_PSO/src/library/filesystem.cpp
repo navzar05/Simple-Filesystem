@@ -14,7 +14,7 @@ uint32_t FileSystem::POINTERS_PER_BLOCK = 0; // Adjust the initial value as need
 bool *FileSystem::bitmap = nullptr;
 char *FileSystem::superBlock = nullptr;
 char *FileSystem::inodeBlocks = nullptr;
-
+size_t FileSystem::totalInodes = 0;
 
 //implemented only for direct pointers
 /* void FileSystem::debugInodes(char block){
@@ -68,7 +68,8 @@ FileSystem::FileSystem(Disk *disk)
     this->POINTERS_PER_INODE = 5;
     this->POINTERS_PER_BLOCK = disk->BLOCK_SIZE / 4;
     this->superBlock = new char[Disk::BLOCK_SIZE];
-    this->inodeBlocks = new char[FileSystem::ceilDiv(disk->blocks, 10) * sizeof(Disk::BLOCK_SIZE)];
+    this->totalInodes=FileSystem::ceilDiv(disk->blocks, 10) * sizeof(Disk::BLOCK_SIZE);
+    this->inodeBlocks = new char[this->totalInodes];
 }
 
 FileSystem::~FileSystem()
@@ -170,14 +171,49 @@ bool FileSystem::unmount(Disk *disk)
     return 0;
 }
 
+
+bool FileSystem::getInode(size_t inode)
+{
+   Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+
+   if(!inodes[inode].Valid){
+        free(inodes);
+        return false;
+   }
+
+    free(inodes);
+    return true;
+}
+
 ssize_t FileSystem::create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions){
 
+    Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+
+    for(int i=0;i<this->totalInodes;i++){
+        if(!inodes[i].Valid){
+            inodes[i].Valid=1;
+            inodes[i].Size=0;
+            inodes[i].Direct=(u_int32_t*)malloc(sizeof(uint32_t)*POINTERS_PER_INODE);
+            inodes[i].OwnerUserID=_OwnerUserID;
+            inodes[i].OwnerGroupID=_OwnerGroupID;
+            inodes[i].Permissions=_Permissions;
+
+            //filename is copied from shell
+
+            free(inodes);
+            return i;
+        }
+    }
+
+    //if does not return, has reached the maximum
+    fprintf(stderr,"Reached the maximum size\n");
+
+    return -1;
 }
 
 bool FileSystem::remove(size_t inumber){
 
 }
-
 statDetails FileSystem::stat(size_t inumber){
 
 }

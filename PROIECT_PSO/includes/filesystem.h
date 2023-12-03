@@ -54,13 +54,12 @@ public:
     static bool *bitmap;
     static char *superBlock;
     static char *inodeBlocks;
+    static size_t totalInodes;
 
     static void debugInodes(char block); //pentru debbuging
     static size_t ceilDiv(size_t a, size_t b);
     static bool loadDirectPages(void *start, size_t inode);
     static bool loadIndirectPages(void * start, size_t inode);
-/*     static bool writeBlock(Disk *disk, int blocknum, Block* block);
-    static bool readBlock(Disk *disk, int blocknum, Block* block); */
 public:
     FileSystem(Disk *disk);
     ~FileSystem();
@@ -70,6 +69,7 @@ public:
 
     static bool mount(Disk *disk);
     static bool unmount(Disk *disk);
+    bool getInode(size_t);
 
     ssize_t create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
     bool    remove(size_t inumber);
