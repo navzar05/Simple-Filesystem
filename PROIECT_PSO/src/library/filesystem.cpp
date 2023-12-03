@@ -278,15 +278,9 @@ statDetails FileSystem::stat(size_t inumber)
 
 ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)
 {
-/*     Disk * disk = NULL;
-    char * indirectBlock = NULL;
-    disk->so_read(inodes[inumber].Indirect, indirectBlock);
-    uint32_t *pointers = reinterpret_cast<uint32_t*>(indirectBlock);
-    pointers[0]
- */
-/*     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
+    SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
-    void *start = nullptr;
+    char *start = nullptr;
 
     if (!auxInodeBlocks[inumber].Valid)  {
         fprintf(stderr, "Error on filesystem read. I-node invalid <%ld>.\n", inumber);
@@ -294,13 +288,21 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
     }
 
     size_t blocks = FileSystem::ceilDiv(auxInodeBlocks[inumber].Size, Disk::BLOCK_SIZE);
+
     //DEBUG
     printf("Blocks of inode <%ld>: %ld\n", inumber, blocks);
-    //
 
-    start = mmap(NULL, blocks*Disk::BLOCK_SIZE, PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0); */
+    start = (char*)mmap(NULL, blocks*Disk::BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
+    FileSystem::loadDirectPages(start, inumber, auxInodeBlocks, blocks);
 
+    printf("Size of inode <%ld>: %ld\n", inumber, auxInodeBlocks[inumber].Size);
+
+    memcpy(data , start + offset * sizeof(char), length);
+
+    munmap(start, blocks*Disk::BLOCK_SIZE);
+
+    return length;
 }
 
 ssize_t FileSystem::fs_write(size_t inumber, char *data, size_t length, size_t offset)
@@ -321,10 +323,8 @@ ssize_t FileSystem::fs_write(size_t inumber, char *data, size_t length, size_t o
     printf("Blocks to write to inode <%ld>: %ld\n", inumber, blocksToWrite);
     //
 
-    if (blocksToWrite < blocks)
-        start = (char*)mmap(NULL, blocks*Disk::BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-    else
-        start = (char*)mmap(NULL, blocksToWrite*Disk::BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    start = (char*)mmap(NULL, (blocksToWrite < blocks ? blocks : blocksToWrite) * Disk::BLOCK_SIZE,
+     PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
     FileSystem::loadDirectPages(start, inumber, auxInodeBlocks, (blocksToWrite < blocks ? blocks : blocksToWrite));
 
@@ -335,7 +335,11 @@ ssize_t FileSystem::fs_write(size_t inumber, char *data, size_t length, size_t o
 
     FileSystem::saveDirectPages(start, inumber, auxInodeBlocks, (blocksToWrite < blocks ? blocks : blocksToWrite));
 
+    munmap(start, (blocksToWrite < blocks ? blocks : blocksToWrite) * Disk::BLOCK_SIZE);
+
     auxInodeBlocks[inumber].Size += length;
 
     printf("Data saved on disk. Size of file: %ld\n", auxInodeBlocks[inumber].Size);
+
+    return length;
 }
