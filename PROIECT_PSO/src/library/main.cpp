@@ -1,5 +1,5 @@
 /* #include "../../includes/disk_driver.h" */
-#include "../../includes/filesystem.h"
+#include "../../includes/fileSystemAPI.h"
 
 int main(){
     Disk *disk = new Disk();
@@ -32,4 +32,16 @@ int main(){
     printf("Data read: %s\n", buffer);
 
     delete[] block1;
+
+    //FileSystemAPI tests
+    printf("\n\n Tests on fileSystemAPI\n\n");
+
+    fileSystemAPI* fsAPI = fileSystemAPI::getInstance("./bin/file.txt", 20);
+
+    fsAPI->createUser("SefuThau", "euSuntsmecheru", 1);
+    fsAPI->createUser("Ciocanul","idolu_la_femei",2);
+    
+    fileSystemAPI::destroyInstance();
+
+    return 0;
 }

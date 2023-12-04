@@ -1,5 +1,4 @@
-#include "../../includes/filesystem.h"
-#include "filesystem.h"
+#include "../../includes/fileSystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
 uint32_t FileSystem::POINTERS_PER_INODE = 0;
@@ -316,8 +315,22 @@ bool FileSystem::remove(size_t inumber){
 
     return true;
 }
-statDetails FileSystem::stat(size_t inumber){
 
+statDetails FileSystem::stat(size_t inumber){
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+
+    statDetails inodeDetails;
+
+    //set statDetails
+    inodeDetails.Valid = inodes[inumber].Valid;
+    inodeDetails.Size = inodes[inumber].Size;
+    inodeDetails.OwnerUserID = inodes[inumber].OwnerUserID;
+    inodeDetails.OwnerGroupID = inodes[inumber].OwnerGroupID;
+    inodeDetails.Permissions = inodes[inumber].Permissions;
+
+    inodes = NULL;
+
+    return inodeDetails;
 }
 
 //Doar pentru length corect
