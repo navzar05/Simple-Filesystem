@@ -38,15 +38,8 @@ struct statDetails{
     uint32_t Permissions;
 };
 
-/* union Block {
-    SuperBlock  Super;
-    Inode       *Inodes; //[INODES_PER_BLOCK];
-    uint32_t    *Pointers; //[POINTERS_PER_BLOCK];
-    char        Data[4096]; //[Disk::BLOCK_SIZE];
-}; */
-
 class FileSystem {
-public:
+private:
     static uint32_t INODES_PER_BLOCK;   //= 32;
     static uint32_t POINTERS_PER_INODE; //= 5;
     static uint32_t POINTERS_PER_BLOCK; //= 1024;
@@ -55,11 +48,19 @@ public:
     static char *superBlock;
     static char *inodeBlocks;
     static size_t totalInodes;
+    static Disk *mountedDisk;
 
     static void debugInodes(char block); //pentru debbuging
     static size_t ceilDiv(size_t a, size_t b);
-    static bool loadDirectPages(void *start, size_t inode);
-    static bool loadIndirectPages(void * start, size_t inode);
+
+    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool loadIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+
+    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool saveIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
+    static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
+
 public:
     FileSystem(Disk *disk);
     ~FileSystem();

@@ -3,8 +3,9 @@
 
 int main(){
     Disk *disk = new Disk();
-    disk->disk_open("./bin/file.txt", 5);
+    disk->disk_open("./bin/file.txt", 20);
     char* block1 = new char[Disk::BLOCK_SIZE];
+    char buffer[1024] = { 0 };
     FileSystem *fs = new FileSystem(disk);
     FileSystem::format(disk);
 
@@ -22,11 +23,13 @@ int main(){
     SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
 
+    size_t testInode = fs->create(1,1, 0666);
 
-    /* char msg[]="Ana nu are mere ca au scumpit capitalistii tot fmm";
-    fs->fs_write(3,msg,sizeof(msg),0); */
+    fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
-    delete disk;
-    delete fs;
+    fs->fs_read(testInode, buffer, 1024, 0);
+
+    printf("Data read: %s\n", buffer);
+
     delete[] block1;
 }
