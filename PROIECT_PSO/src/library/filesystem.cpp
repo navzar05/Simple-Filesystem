@@ -273,10 +273,50 @@ ssize_t FileSystem::create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32
     return -1;
 }
 
-bool FileSystem::remove(size_t inumber)
-{
+bool FileSystem::remove(size_t inumber){
     Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+    size_t indexPointer = ceilDiv(inodes[inumber].Size, Disk::BLOCK_SIZE);
 
+    for(int i = 0; i < POINTERS_PER_INODE; i ++){
+        //free that blocks
+        if(inodes[inumber].Direct[i])
+            bitmap[inodes[inumber].Direct[i]]=false;
+    }
+
+    delete inodes[inumber].Direct;
+
+    if(indexPointer >= POINTERS_PER_INODE){
+        char *data = new char[Disk::BLOCK_SIZE]();
+        mountedDisk->so_read(inodes[inumber].Indirect, data);
+        uint32_t *pointers=reinterpret_cast<uint32_t*>(data);
+
+        //start from index 0 in Indirect Pointer
+        indexPointer -= POINTERS_PER_INODE;
+        for(int i = 0; i <= indexPointer; i ++){
+
+            //invalidate all blocks from indirect pointer
+            if(pointers[i] != 0){
+                bitmap[pointers[i]] = false;
+                pointers[i] = 0;
+            }
+        }
+
+        //clear the block pointed indirect
+        mountedDisk->so_write(inodes[inumber].Indirect, data);
+        inodes[inumber].Indirect = 0;
+
+        delete data;
+        delete pointers;
+    }
+
+    inodes[inumber].Valid=0;
+    inodes[inumber].OwnerGroupID=0;
+    inodes[inumber].OwnerUserID=0;
+    inodes[inumber].Size=0;
+
+    return true;
+}
+statDetails FileSystem::stat(size_t inumber){
 
 }
 
