@@ -3,7 +3,7 @@
 
 int main(){
     Disk *disk = new Disk();
-    disk->disk_open("./bin/file.txt", 5);
+    disk->disk_open("./bin/file.txt", 20);
     char* block1 = new char[Disk::BLOCK_SIZE];
     char buffer[1024] = { 0 };
     FileSystem *fs = new FileSystem(disk);
@@ -27,7 +27,7 @@ int main(){
 
     fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
-    fs->fs_read(testInode, buffer, sizeof("Ana are mere"), 0);
+    fs->fs_read(testInode, buffer, 1024, 0);
 
     printf("Data read: %s\n", buffer);
 

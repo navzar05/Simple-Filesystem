@@ -58,7 +58,7 @@ private:
 
     static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
     static bool saveIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
-    static size_t getStartOfDataBlocks();// Intoarce indexul primului bloc de date din File System.
+    static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 
 public:
