@@ -284,7 +284,7 @@ statDetails FileSystem::stat(size_t inumber)
 {
 
 }
-
+//Doar pentru length corect
 ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)
 {
     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
@@ -296,18 +296,35 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
         return -1;
     }
 
-    size_t blocks = FileSystem::ceilDiv(auxInodeBlocks[inumber].Size, Disk::BLOCK_SIZE);
-
+    size_t blocks = FileSystem::ceilDiv(auxInodeBlocks[inumber].Size, Disk::BLOCK_SIZE); //cate blocuri avem pentru i-node
     //DEBUG
     printf("Blocks of inode <%ld>: %ld\n", inumber, blocks);
+    //
 
     start = (char*)mmap(NULL, blocks*Disk::BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
-    FileSystem::loadDirectPages(start, inumber, auxInodeBlocks, blocks);
+
+    //LOADING
+    if (blocks <= FileSystem::POINTERS_PER_INODE)
+        FileSystem::loadDirectPages(start, inumber, auxInodeBlocks, blocks);
+    else {
+        FileSystem::loadDirectPages(start, inumber, auxInodeBlocks, FileSystem::POINTERS_PER_INODE);
+        FileSystem::loadIndirectPages(start + FileSystem::POINTERS_PER_INODE * Disk::BLOCK_SIZE, inumber,
+         auxInodeBlocks, blocks - FileSystem::POINTERS_PER_INODE);
+    }
 
     printf("Size of inode <%ld>: %ld\n", inumber, auxInodeBlocks[inumber].Size);
 
     memcpy(data , start + offset * sizeof(char), length);
+
+    //SAVING
+    if (blocks <= FileSystem::POINTERS_PER_INODE)
+        FileSystem::saveDirectPages(start, inumber, auxInodeBlocks, blocks);
+    else {
+        FileSystem::saveDirectPages(start, inumber, auxInodeBlocks, FileSystem::POINTERS_PER_INODE);
+        FileSystem::saveIndirectPages(start + FileSystem::POINTERS_PER_INODE * Disk::BLOCK_SIZE, inumber,
+         auxInodeBlocks, blocks - FileSystem::POINTERS_PER_INODE);
+    }
 
     munmap(start, blocks*Disk::BLOCK_SIZE);
 
