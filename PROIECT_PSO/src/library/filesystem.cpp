@@ -320,10 +320,6 @@ statDetails FileSystem::stat(size_t inumber){
 
 }
 
-statDetails FileSystem::stat(size_t inumber)
-{
-
-}
 //Doar pentru length corect
 ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)
 {
