@@ -1,5 +1,0 @@
-Total_Users:	2
-
-Username	Password	UserID	GroupID	Permissions
-SefuThau	euSuntsmecheru	1	0	0
-Ciocanul	idolu_la_femei	2	0	0

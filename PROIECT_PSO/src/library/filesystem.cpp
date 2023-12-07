@@ -1,4 +1,5 @@
-#include "../../includes/fileSystem.h"
+#include "../../includes/filesystem.h"
+#include "filesystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
 uint32_t FileSystem::POINTERS_PER_INODE = 0;
@@ -234,20 +235,33 @@ bool FileSystem::unmount(Disk *disk)
 }
 
 
-bool FileSystem::getInode(size_t inode)
+size_t FileSystem::getInumber(const char *filename)
 {
-   Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
 
-   if(!inodes[inode].Valid){
-        free(inodes);
-        return false;
-   }
+    //get the inode of the filename
+    for(int i = 0; i < totalInodes ; i ++){
 
-    free(inodes);
-    return true;
+        if(strncmp(inodes[i].Filename, filename, MAX_FILENAME_LENGTH) == 0){
+            printf("I found %s\n", filename);
+            return i;
+        }
+    }
+
+    //the filename does not exist
+    fprintf(stderr, "File %s does not exist!\n", filename);
+    return -1;
 }
 
-ssize_t FileSystem::create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions){
+Inode FileSystem::getInode(size_t inumber)
+{
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+
+    return inodes[inumber];
+}
+
+ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions)
+{
 
     Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
 
@@ -259,6 +273,8 @@ ssize_t FileSystem::create(uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32
             inodes[i].OwnerUserID=_OwnerUserID;
             inodes[i].OwnerGroupID=_OwnerGroupID;
             inodes[i].Permissions=_Permissions;
+
+            memcpy(inodes[i].Filename, filename, MAX_FILENAME_LENGTH);
 
             //filename is copied from shell
             printf("Inode created.\n");
@@ -380,7 +396,7 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
     return length;
 }
 
-ssize_t FileSystem::fs_write(size_t inumber, char *data, size_t length, size_t offset)
+ssize_t FileSystem::fs_write(size_t inumber, const char *data, size_t length, size_t offset)
 {
     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
