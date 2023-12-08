@@ -50,14 +50,17 @@ private:
     static size_t totalInodes;
     static Disk *mountedDisk;
 
-    static void debugInodes(char block); //pentru debbuging
+      static void debugInodes(char block); //pentru debbuging
+    static size_t floorDiv(size_t a, size_t b);
     static size_t ceilDiv(size_t a, size_t b);
 
-    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
-    static bool loadIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
 
-    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
-    static bool saveIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 

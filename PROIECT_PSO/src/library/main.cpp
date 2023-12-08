@@ -27,7 +27,7 @@ int main(){
 
     fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
-    fs->fs_read(testInode, buffer, 1024, 0);
+    fs->fs_read(testInode, buffer, 1024, 2);
 
     printf("Data read: %s\n", buffer);
 
