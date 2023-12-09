@@ -44,7 +44,7 @@ int main(){
     delete fs;
 
     //FileSystemAPI tests
-/*     printf("\n\n Tests on fileSystemAPI\n\n");
+     /* printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance("./bin/file.txt", 100);
 
@@ -54,8 +54,8 @@ int main(){
     fsAPI->createUser("Ciocanul","idolu_la_femei",2);
     fsAPI->createUser("Ionel","cuceritorul",3);
     fsAPI->createUser("Ciocanul","idolu_la_femei",5);
-    
-    fileSystemAPI::destroyInstance();
+
+    fileSystemAPI::destroyInstance(); */
 
 
     return 0;

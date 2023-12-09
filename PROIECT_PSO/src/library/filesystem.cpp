@@ -174,9 +174,10 @@ bool FileSystem::checkImportantFiles(const char *filename, size_t inumber)
     }
 
     if(isUsers || isPaswords || isGroups)
-        return true;    
-    
+        return true;
+
     return false;
+}
 
 bool FileSystem::initBitmap(const Inode* inodeBlock)
 {
@@ -400,7 +401,7 @@ ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t
                 inodes[i].Size = 0;
 
             printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", i, inodes[i].Filename, inodes[i].Valid, inodes[i].Size,inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Permissions );
-    
+
             return i;
         }
     }
@@ -408,10 +409,10 @@ ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t
     fprintf(stderr,"Reached the maximum size\n");
 
     return -1;
-    
+
     //filename is copied from shell
     //printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", index_inodes, inodes[index_inodes].Filename, inodes[index_inodes].Valid, inodes[index_inodes].Size,inodes[index_inodes].OwnerUserID, inodes[index_inodes].OwnerGroupID, inodes[index_inodes].Permissions );
-    
+
     //for(int i = fileSystemAPI::inumberUsersFile; i <= fileSystemAPI::inumberPasswordsFile; i ++)
         //printf("Inodes in fs_create: inumber= %d valid= %d filename= %s!\n", i, inodes[i].Valid, inodes[i].Filename);
 }
