@@ -23,11 +23,14 @@ $(LIB_DIR)/libdisk.a: $(SRC_DIR)/disk_driver.o
 $(SRC_DIR)/disk_driver.o: $(SRC_DIR)/disk_driver.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/disk_driver.o $(SRC_DIR)/disk_driver.cpp
 
-$(LIB_DIR)/libfilesystem.a: $(SRC_DIR)/filesystem.o
-	$(AR) $(ARFLAGS) $(LIB_DIR)/libfilesystem.a $(SRC_DIR)/filesystem.o
+$(LIB_DIR)/libfilesystem.a: $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o
+	$(AR) $(ARFLAGS) $(LIB_DIR)/libfilesystem.a $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o
+
+$(SRC_DIR)/fileSystemAPI.o: $(SRC_DIR)/fileSystemAPI.cpp
+	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/fileSystemAPI.o $(SRC_DIR)/fileSystemAPI.cpp
 
 $(SRC_DIR)/filesystem.o: $(SRC_DIR)/filesystem.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/filesystem.o $(SRC_DIR)/filesystem.cpp
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/*
+	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/* users_file.txt passwords_file.txt

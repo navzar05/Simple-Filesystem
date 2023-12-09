@@ -279,22 +279,28 @@ bool FileSystem::unmount(Disk *disk)
 }
 
 
-bool FileSystem::getInode(size_t inode)
+size_t FileSystem::getInumber(const char *filename)
 {
-   Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
 
-   if(!inodes[inode].Valid){
-        free(inodes);
-        return false;
-   }
+    //get the inode of the filename
+    for(int i = 0; i < totalInodes ; i ++){
 
-    free(inodes);
-    return true;
+        if(strncmp(inodes[i].Filename, filename, MAX_FILENAME_LENGTH) == 0){
+            printf("I found %s\n", filename);
+            return i;
+        }
+    }
+
+    //the filename does not exist
+    fprintf(stderr, "File %s does not exist!\n", filename);
+    return -1;
 }
 
-ssize_t FileSystem::create(uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions) {
-    Inode* inodes = reinterpret_cast<Inode*>(this->inodeBlocks);
 
+ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions)
+{
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
     for (int i = 0; i < this->totalInodes; i++) {
         if (!inodes[i].Valid) {
             inodes[i].Valid = 1;
@@ -306,11 +312,15 @@ ssize_t FileSystem::create(uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t
                 return -1;
             }
 
-            inodes[i].OwnerUserID = ownerUserID;
-            inodes[i].OwnerGroupID = ownerGroupID;
-            inodes[i].Permissions = permissions;
+            inodes[i].OwnerUserID = _OwnerUserID;
+            inodes[i].OwnerGroupID = _OwnerGroupID;
+            inodes[i].Permissions = _Permissions;
 
             printf("Inode created with index %d.\n", i);
+            memcpy(inodes[i].Filename, filename, MAX_FILENAME_LENGTH);
+
+            //filename is copied from shell
+            printf("Inode created.\n");
             return i;
         }
     }
@@ -370,7 +380,20 @@ bool FileSystem::remove(size_t inumber)
 }
 
 statDetails FileSystem::stat(size_t inumber){
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
 
+    statDetails inodeDetails;
+
+    //set statDetails
+    inodeDetails.Valid = inodes[inumber].Valid;
+    inodeDetails.Size = inodes[inumber].Size;
+    inodeDetails.OwnerUserID = inodes[inumber].OwnerUserID;
+    inodeDetails.OwnerGroupID = inodes[inumber].OwnerGroupID;
+    inodeDetails.Permissions = inodes[inumber].Permissions;
+
+    inodes = NULL;
+
+    return inodeDetails;
 }
 
 //Doar pentru length corect
@@ -425,7 +448,7 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
     return length;
 }
 
-ssize_t FileSystem::fs_write(size_t inumber, char *data, size_t length, size_t offset)
+ssize_t FileSystem::fs_write(size_t inumber, const char *data, size_t length, size_t offset)
 {
     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
