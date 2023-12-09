@@ -18,12 +18,14 @@ int main(){
     printf("\nDebug function test:\n");
     FileSystem::debug(disk);
 
+    printf("Size of Inode: %d\n", sizeof(Inode));
+
     // printf("\nso_read() function test on superblock:\n");
     // disk->so_read(0, block1);
     // SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     // printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
 
-/*     size_t testInode = fs->create("sefu.txt",1,1, 0666);
+    size_t testInode = fs->create("sefu.txt",1,1, 0666);
 
     fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
@@ -39,10 +41,10 @@ int main(){
 
     delete[] block1;
 
-    delete fs; */
+    delete fs;
 
     //FileSystemAPI tests
-    printf("\n\n Tests on fileSystemAPI\n\n");
+/*     printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance("./bin/file.txt", 20);
 
@@ -52,7 +54,7 @@ int main(){
     fsAPI->createUser("SefuThau", "euSuntsmecheru", 1);
     //fsAPI->createUser("Ciocanul","idolu_la_femei",2);
 
-    fileSystemAPI::destroyInstance();
+    fileSystemAPI::destroyInstance(); */
 
     return 0;
 }

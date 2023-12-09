@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 
 
@@ -28,8 +29,8 @@ public:
     size_t size() const { return blocks; }
 
 
-    bool so_read(size_t blocknum, char *data);
-    bool so_write(size_t blocknum, char *data);
+    bool so_read(size_t blocknum, char *data, size_t size);
+    bool so_write(size_t blocknum, char *data, size_t size);
 };
 
 #endif // DISK_H

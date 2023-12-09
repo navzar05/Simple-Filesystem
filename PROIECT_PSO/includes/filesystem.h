@@ -1,14 +1,13 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-#include <string.h>
 #include <sys/mman.h>
 #include "disk_driver.h"
 
-const static uint32_t MAX_FILENAME_LENGTH = 100;
+const static uint32_t MAX_FILENAME_LENGTH = 100 - 4; //de la pointer
 const static uint32_t MAGIC_NUMBER = 0x05112002;
 
-struct SuperBlock {
+struct __attribute__ ((packed)) SuperBlock {
 uint32_t MagicNumber;
 uint32_t Blocks;
 uint32_t InodeBlocks;
@@ -16,7 +15,7 @@ uint32_t Inodes;
 };
 
 //un i-node ocupa 128 de octeti
-struct Inode {
+struct __attribute__ ((packed)) Inode {
     uint32_t Valid;
     uint32_t Size;
     uint32_t *Direct; //[POINTERS_PER_INODE];
