@@ -1,4 +1,5 @@
 #include "../../includes/filesystem.h"
+#include "../../includes/fileSystemAPI.h"
 #include "filesystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
@@ -108,6 +109,31 @@ bool FileSystem::allocBlock(uint32_t *pointer)
         return -1;
 }
 
+bool FileSystem::checkImportantFiles(const char *filename, size_t inumber)
+{
+    bool isUsers = false, isPaswords = false, isGroups = false;
+
+    if(strncmp(USERS_FILE, filename, strlen(filename)) == 0){
+        fileSystemAPI::inumberUsersFile = inumber;
+        isUsers = true;
+    }
+
+    else if(strncmp(PASSWORDS_FILE, filename, strlen(filename)) == 0){
+        fileSystemAPI::inumberPasswordsFile = inumber;
+        isPaswords = true;
+    }
+
+    else if(strncmp(GROUPS_FILE, filename, strlen(filename)) == 0){
+        fileSystemAPI::inumberGroupsFile = inumber;
+        isGroups = true;
+    }
+
+    if(isUsers || isPaswords || isGroups)
+        return true;    
+    
+    return false;
+}
+
 FileSystem::FileSystem(Disk *disk)
 {
     this->INODES_PER_BLOCK = disk->BLOCK_SIZE / 128;
@@ -115,7 +141,7 @@ FileSystem::FileSystem(Disk *disk)
     this->POINTERS_PER_BLOCK = disk->BLOCK_SIZE / 4;
     this->superBlock = new char[Disk::BLOCK_SIZE];
     this->totalInodes=FileSystem::ceilDiv(disk->blocks, 10) * sizeof(Disk::BLOCK_SIZE);
-    this->inodeBlocks = new char[this->totalInodes];
+    //this->inodeBlocks = new char[totalInodes * sizeof(Inode)];
 }
 
 FileSystem::~FileSystem()
@@ -163,6 +189,7 @@ bool FileSystem::format(Disk *disk)
 {
     //clear all data
     ftruncate(disk->descriptor, 0);
+
     //scriem superblock-ul
     SuperBlock *auxBlock = reinterpret_cast<SuperBlock*>(superBlock);
     auxBlock->MagicNumber = 0x05112002;
@@ -172,12 +199,20 @@ bool FileSystem::format(Disk *disk)
     bitmap = new bool[disk->blocks - auxBlock->InodeBlocks - 1];
     memset(bitmap, 0, sizeof(bool) * disk->blocks - auxBlock->InodeBlocks - 1);
 
+    //alocam inodeBlocks
+    inodeBlocks = new char[auxBlock->InodeBlocks * Disk::BLOCK_SIZE];
+
     //DEBUG
     //printf("%d %d %d\n", auxBlock->Blocks, auxBlock->InodeBlocks, auxBlock->Inodes);
     //
     disk->so_write(0, superBlock);
     FileSystem::mountedDisk = disk;
     disk->mounted = 1;
+
+    //ocupy superblock and blocks for inode
+    for(int i = 0; i < auxBlock->InodeBlocks + 1; i ++){
+        bitmap[i] = true;
+    }
 }
 
 bool FileSystem::mount(Disk *disk)
@@ -234,7 +269,6 @@ bool FileSystem::unmount(Disk *disk)
     return 0;
 }
 
-
 size_t FileSystem::getInumber(const char *filename)
 {
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
@@ -243,7 +277,7 @@ size_t FileSystem::getInumber(const char *filename)
     for(int i = 0; i < totalInodes ; i ++){
 
         if(strncmp(inodes[i].Filename, filename, MAX_FILENAME_LENGTH) == 0){
-            printf("I found %s\n", filename);
+            printf("I found file= %s at index= %d!\n", filename, i);
             return i;
         }
     }
@@ -262,30 +296,39 @@ Inode FileSystem::getInode(size_t inumber)
 
 ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions)
 {
+    Inode *inodes = reinterpret_cast<Inode*>(this->inodeBlocks);
 
-    Inode *inodes=reinterpret_cast<Inode*>(this->inodeBlocks);
+    //printf("First in create(): \n%s", FileSystem::inodeBlocks);
 
-    for(int i=0;i<this->totalInodes;i++){
+    for(int i = 0; i < this->totalInodes; i ++){
         if(!inodes[i].Valid){
-            inodes[i].Valid=1;
-            inodes[i].Size=0;
+            inodes[i].Valid = 1;
             inodes[i].Direct = new uint32_t[FileSystem::POINTERS_PER_INODE];
-            inodes[i].OwnerUserID=_OwnerUserID;
-            inodes[i].OwnerGroupID=_OwnerGroupID;
-            inodes[i].Permissions=_Permissions;
+            inodes[i].OwnerUserID = _OwnerUserID;
+            inodes[i].OwnerGroupID = _OwnerGroupID;
+            inodes[i].Permissions = _Permissions;
 
             memcpy(inodes[i].Filename, filename, MAX_FILENAME_LENGTH);
 
-            //filename is copied from shell
-            printf("Inode created.\n");
+            if(checkImportantFiles(filename, i))
+                inodes[i].Size = 4095;
+            else
+                inodes[i].Size = 0;
+
+            printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", i, inodes[i].Filename, inodes[i].Valid, inodes[i].Size,inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Permissions );
+    
             return i;
         }
     }
 
-    //if does not return, has reached the maximum
     fprintf(stderr,"Reached the maximum size\n");
-
     return -1;
+    
+    //filename is copied from shell
+    //printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", index_inodes, inodes[index_inodes].Filename, inodes[index_inodes].Valid, inodes[index_inodes].Size,inodes[index_inodes].OwnerUserID, inodes[index_inodes].OwnerGroupID, inodes[index_inodes].Permissions );
+    
+    //for(int i = fileSystemAPI::inumberUsersFile; i <= fileSystemAPI::inumberPasswordsFile; i ++)
+        //printf("Inodes in fs_create: inumber= %d valid= %d filename= %s!\n", i, inodes[i].Valid, inodes[i].Filename);
 }
 
 bool FileSystem::remove(size_t inumber){
@@ -355,6 +398,9 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
     char *start = nullptr;
+
+    for(int i = fileSystemAPI::inumberUsersFile; i <= fileSystemAPI::inumberPasswordsFile; i ++)
+        printf("Inodes in fs_read: inumber= %d valid= %d filename= %s!\n", i, auxInodeBlocks[i].Valid, auxInodeBlocks[i].Filename);
 
     if (!auxInodeBlocks[inumber].Valid)  {
         fprintf(stderr, "Error on filesystem read. I-node invalid <%ld>.\n", inumber);

@@ -1,18 +1,19 @@
 #include "filesystem.h"
 
-#define MAX_USERS 100
+#define MAX_USERS 10
 #define USERS_FILE "users_file.txt"
 #define PASSWORDS_FILE "passwords_file.txt"
+#define GROUPS_FILE "groups_file.txt"
 
-#define USERNAME_LENGTH 50
-#define PASSWORD_LENGTH 50
+#define USERNAME_LENGTH 20
+#define PASSWORD_LENGTH 20
 
 #define WRITE_PERMISSION 4
 #define READ_PERMISSION 6
 
 struct User{
-    char *username;
-    char *password;
+    char username[USERNAME_LENGTH];
+    char password[PASSWORD_LENGTH];
     uint32_t userID;
     uint32_t groupID;
     uint32_t permissions;
@@ -47,20 +48,23 @@ public:
     bool execute(const char* filename);
 
 private:
+    friend class FileSystem;
     fileSystemAPI(const char *disk_path, size_t disk_blocks);
     ~fileSystemAPI();
 
     static fileSystemAPI *instance;
     static User *users;
     static FileSystem *myFileSystem;
+    static Disk *disk;
 
-    size_t diskBlocks;
-    size_t totalUsers;
-    size_t currentUser;
-
-    Disk *disk;
+    static size_t totalUsers;
+    static size_t diskBlocks;
+    static size_t currentUser;
+    static size_t inumberUsersFile;
+    static size_t inumberPasswordsFile;
+    static size_t inumberGroupsFile;
 
     bool hasPermissions(const char *filename, uint32_t mode);
-    void readUsersFile();
-    void writeUsersFile(const char *filename);
+    void readImportantFile(const char *filename);
+    void writeImportantFile(const char *filename);
 };

@@ -36,13 +36,14 @@ int main(){
     //FileSystemAPI tests
     printf("\n\n Tests on fileSystemAPI\n\n");
 
-    fileSystemAPI* fsAPI = fileSystemAPI::getInstance("./bin/file.txt", 20);
+    fileSystemAPI* fsAPI = fileSystemAPI::getInstance("./bin/file.txt", 100);
 
-    fsAPI->mountFileSystem();
-
-    fsAPI->createUser("SefuThau", "euSuntsmecheru", 1);
-    fsAPI->createUser("SefuThau", "euSuntsmecheru", 1);
-    //fsAPI->createUser("Ciocanul","idolu_la_femei",2);
+    fsAPI->createUser("root", "rtqgoqmvp123.", 1);
+    fsAPI->createUser("SefuThau", "euSuntsmecheru", 8);
+    fsAPI->createUser("SefuThau", "euSuntsmecheru", 4);
+    fsAPI->createUser("Ciocanul","idolu_la_femei",2);
+    fsAPI->createUser("Ionel","cuceritorul",3);
+    fsAPI->createUser("Ciocanul","idolu_la_femei",5);
     
     fileSystemAPI::destroyInstance();
 

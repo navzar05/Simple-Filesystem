@@ -5,14 +5,14 @@
 #include <sys/mman.h>
 #include "disk_driver.h"
 
-const static uint32_t MAX_FILENAME_LENGTH = 100;
+const static uint32_t MAX_FILENAME_LENGTH = 20;
 const static uint32_t MAGIC_NUMBER = 0x05112002;
 
 struct SuperBlock {
-uint32_t MagicNumber;
-uint32_t Blocks;
-uint32_t InodeBlocks;
-uint32_t Inodes;
+    uint32_t MagicNumber;
+    uint32_t Blocks;
+    uint32_t InodeBlocks;
+    uint32_t Inodes;
 };
 
 //un i-node ocupa 128 de octeti
@@ -49,8 +49,8 @@ private:
     static bool *bitmap;
     static char *superBlock;
     static char *inodeBlocks;
-    static size_t totalInodes;
     static Disk *mountedDisk;
+    static size_t totalInodes;
 
     static void debugInodes(char block); //pentru debbuging
     static size_t ceilDiv(size_t a, size_t b);
@@ -62,7 +62,7 @@ private:
     static bool saveIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
-
+    bool checkImportantFiles(const char *filename, size_t inumber);
 public:
     FileSystem(Disk *disk);
     ~FileSystem();

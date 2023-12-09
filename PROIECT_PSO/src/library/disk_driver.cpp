@@ -23,6 +23,7 @@ void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
 
 bool Disk::so_read(size_t blocknum, char *data)
 {
+    printf("Inside so_read!\n");
     int readbytes = 0;
     if (blocknum >= blocks) {
         fprintf(stderr, "Failed to read data. (blocknum %ld, max. index %ld)\n", blocknum, blocks);
@@ -39,7 +40,10 @@ bool Disk::so_read(size_t blocknum, char *data)
     if ((readbytes = read(this->descriptor, data, Disk::BLOCK_SIZE)) < 0)
         fprintf(stderr, "Failed to read block from disk. (blocknum: %ld)\n", blocknum);
     //DEBUG
-    //printf("read bytes in so_read(): %ld\n", readbytes);
+    
+    printf("read bytes in so_read(): %ld\n", readbytes);
+    printf("Data read with from so_read inumber= %d data= %s\n", blocknum, data);
+    printf("Exit so_read!\n");
     return 0;
 }
 
