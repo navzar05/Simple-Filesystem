@@ -33,4 +33,4 @@ $(SRC_DIR)/filesystem.o: $(SRC_DIR)/filesystem.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/filesystem.o $(SRC_DIR)/filesystem.cpp
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/* users_file.txt passwords_file.txt
+	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/*

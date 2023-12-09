@@ -48,8 +48,8 @@ private:
     static bool *bitmap;
     static char *superBlock;
     static char *inodeBlocks;
-    static size_t totalInodes;
     static Disk *mountedDisk;
+    static size_t totalInodes;
 
     static void debugInodes(char block); //pentru debbuging
     static size_t floorDiv(size_t a, size_t b);
@@ -64,6 +64,8 @@ private:
     static bool saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
+
+    bool checkImportantFiles(const char *filename, size_t inumber);
     static bool initBitmap(const Inode* inodeBlock);
 public:
     FileSystem(Disk *disk);

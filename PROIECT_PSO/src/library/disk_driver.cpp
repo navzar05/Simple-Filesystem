@@ -43,7 +43,6 @@ bool Disk::so_read(size_t blocknum, char *data, size_t size) {
 /*     if (size < Disk::BLOCK_SIZE) {
         memset(data + size, 0, Disk::BLOCK_SIZE - size); // Zero out the rest
     } */
-
     return 0;
 }
 
