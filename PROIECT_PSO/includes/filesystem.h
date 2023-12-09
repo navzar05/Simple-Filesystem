@@ -1,22 +1,21 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-#include <string.h>
 #include <sys/mman.h>
 #include "disk_driver.h"
 
-const static uint32_t MAX_FILENAME_LENGTH = 20;
+const static uint32_t MAX_FILENAME_LENGTH = 100 - 4; //de la pointer
 const static uint32_t MAGIC_NUMBER = 0x05112002;
 
-struct SuperBlock {
-    uint32_t MagicNumber;
-    uint32_t Blocks;
-    uint32_t InodeBlocks;
-    uint32_t Inodes;
+struct __attribute__ ((packed)) SuperBlock {
+uint32_t MagicNumber;
+uint32_t Blocks;
+uint32_t InodeBlocks;
+uint32_t Inodes;
 };
 
 //un i-node ocupa 128 de octeti
-struct Inode {
+struct __attribute__ ((packed)) Inode {
     uint32_t Valid;
     uint32_t Size;
     uint32_t *Direct; //[POINTERS_PER_INODE];
@@ -53,16 +52,21 @@ private:
     static size_t totalInodes;
 
     static void debugInodes(char block); //pentru debbuging
+    static size_t floorDiv(size_t a, size_t b);
     static size_t ceilDiv(size_t a, size_t b);
 
-    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
-    static bool loadIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
 
-    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t n);
-    static bool saveIndirectPages(char * start, size_t inumber, Inode *inodeBlocks, size_t n);
+    static bool savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static bool saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
+
     bool checkImportantFiles(const char *filename, size_t inumber);
+    static bool initBitmap(const Inode* inodeBlock);
 public:
     FileSystem(Disk *disk);
     ~FileSystem();

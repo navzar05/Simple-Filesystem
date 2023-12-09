@@ -21,10 +21,7 @@ void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
     this->BLOCK_SIZE = block_size;
 }
 
-bool Disk::so_read(size_t blocknum, char *data)
-{
-    printf("Inside so_read!\n");
-    int readbytes = 0;
+bool Disk::so_read(size_t blocknum, char *data, size_t size) {
     if (blocknum >= blocks) {
         fprintf(stderr, "Failed to read data. (blocknum %ld, max. index %ld)\n", blocknum, blocks);
         return -1;
@@ -36,28 +33,39 @@ bool Disk::so_read(size_t blocknum, char *data)
     }
 
     lseek(this->descriptor, Disk::BLOCK_SIZE * blocknum, SEEK_SET);
-    //printf("%ld\n", lseek(this->descriptor, 0, SEEK_CUR));
-    if ((readbytes = read(this->descriptor, data, Disk::BLOCK_SIZE)) < 0)
+
+    ssize_t readbytes = read(this->descriptor, data, size);
+    if (readbytes < 0) {
         fprintf(stderr, "Failed to read block from disk. (blocknum: %ld)\n", blocknum);
-    //DEBUG
-    
-    printf("read bytes in so_read(): %ld\n", readbytes);
-    printf("Data read with from so_read inumber= %d data= %s\n", blocknum, data);
-    printf("Exit so_read!\n");
+        return -1;
+    }
+
+/*     if (size < Disk::BLOCK_SIZE) {
+        memset(data + size, 0, Disk::BLOCK_SIZE - size); // Zero out the rest
+    } */
     return 0;
 }
 
-bool Disk::so_write(size_t blocknum, char *data){
 
+bool Disk::so_write(size_t blocknum, char *data, size_t size) {
     if (blocknum >= blocks) {
         fprintf(stderr, "Failed to write data. (blocknum %ld, max. index %ld)\n", blocknum, blocks);
         return -1;
     }
 
-    //fprintf(stdout, "Data len: %ld\n", Disk::datalen(data));
-    lseek(this->descriptor, this->BLOCK_SIZE * blocknum, SEEK_SET);
-    if (write(this->descriptor, data, Disk::BLOCK_SIZE) < 0){
+    lseek(this->descriptor, Disk::BLOCK_SIZE * blocknum, SEEK_SET);
+
+    if (write(this->descriptor, data, size) < 0) {
         fprintf(stderr, "Failed to write to block from disk. (blocknum: %ld)\n", blocknum);
+        return -1;
     }
+
+    if (size < Disk::BLOCK_SIZE) {
+        // Write 0x00 for the remaining part of the block
+        char zeroPadding[Disk::BLOCK_SIZE - size];
+        memset(zeroPadding, 0, Disk::BLOCK_SIZE - size);
+        write(this->descriptor, zeroPadding, Disk::BLOCK_SIZE - size);
+    }
+
     return 0;
 }
