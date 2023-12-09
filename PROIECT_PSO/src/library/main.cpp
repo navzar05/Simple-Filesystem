@@ -23,13 +23,28 @@ int main(){
     SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
 
-    size_t testInode = fs->create(1,1, 0666);
+    size_t testInode = fs->create(1, 1, 0666);
+
+    printf("Created inode <%ld>\n", testInode);
 
     fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
     fs->fs_read(testInode, buffer, 1024, 2);
 
-    printf("Data read: %s\n", buffer);
+    printf("Data read from inode <%ld>: %s\n", testInode, buffer);
+
+    size_t testInode1 = fs->create(1, 1, 0666);
+
+    printf("Created inode <%ld>\n", testInode1);
+
+
+    fs->fs_write(testInode1, "Ana are avioane", sizeof("Ana are avioane"), 0);
+
+    fs->fs_read(testInode1, buffer, 1024, 2);
+
+    printf("Data read inode <%ld>: %s\n", testInode, buffer);
 
     delete[] block1;
+    delete disk;
+    delete fs;
 }
