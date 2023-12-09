@@ -142,12 +142,28 @@ bool FileSystem::allocBlock(uint32_t *pointer)
         for (int i = 0; i < auxSuperBlock->Blocks - FileSystem::getStartOfDataBlocks(); i ++) {
             if (FileSystem::bitmap[i] == 0) {
                 (*pointer) = i + FileSystem::getStartOfDataBlocks();
-                FileSystem::bitmap[i] = 1;
+                FileSystem::bitmap[i] = true;
+                printf("Found an empty block. %d\n", i);
                 return 0;
             }
         }
         fprintf(stderr, "Bitmap full.\n");
+        exit(-1);
         return -1;
+}
+
+bool FileSystem::initBitmap(const Inode* inodeBlock)
+{
+    SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(FileSystem::superBlock);
+
+    bitmap = new bool[auxSuperBlock->Blocks - auxSuperBlock->InodeBlocks - 1];
+    memset(bitmap, 0, sizeof(bool) * (auxSuperBlock->Blocks - auxSuperBlock->InodeBlocks - 1));
+
+    for (int i = 0; i < auxSuperBlock->Inodes; i ++) {
+            if (inodeBlock[i].Valid)
+                bitmap[i] = 1;
+    }
+    return 0;
 }
 
 FileSystem::FileSystem(Disk *disk)
@@ -162,6 +178,7 @@ FileSystem::FileSystem(Disk *disk)
 
 FileSystem::~FileSystem()
 {
+    this->unmount(this->mountedDisk);
     //printf("in fs desctructor\n");
     FileSystem::mountedDisk = nullptr;
 /*     if (FileSystem::bitmap != nullptr){
@@ -248,8 +265,12 @@ bool FileSystem::mount(Disk *disk)
     printf("Initializing i-nodes...\n");
     lseek(disk->descriptor, Disk::BLOCK_SIZE, SEEK_SET);
 
-    //read are limita, de reimplementat citire in chuck-uri
+    //read are limita, de reimplementat citire in chunck-uri
     read(disk->descriptor, FileSystem::inodeBlocks, auxSuperBlock->InodeBlocks * auxSuperBlock->Inodes);
+
+    FileSystem::initBitmap(reinterpret_cast<Inode*>(FileSystem::inodeBlocks));
+
+    disk->mounted = 1;
 
     FileSystem::mountedDisk = disk;
 
@@ -260,6 +281,11 @@ bool FileSystem::mount(Disk *disk)
 
 bool FileSystem::unmount(Disk *disk)
 {
+    if (disk->mounted == 0) {
+        printf("FS already unmounted.\n");
+        return 0;
+    }
+
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     printf("Unmounting...\n");
 
@@ -267,8 +293,10 @@ bool FileSystem::unmount(Disk *disk)
     disk->so_write(0, FileSystem::superBlock);
 
     printf("Saving i-nodes...\n");
-    for (int i = 1; i < auxSuperBlock->InodeBlocks; i ++)
+    for (int i = 1; i < auxSuperBlock->InodeBlocks; i ++) {
+        if ("")
         disk->so_write(i, FileSystem::inodeBlocks + (i * Disk::BLOCK_SIZE));
+    }
 
     disk->mounted = 0;
 
@@ -278,6 +306,12 @@ bool FileSystem::unmount(Disk *disk)
     return 0;
 }
 
+Inode FileSystem::getInode(size_t inumber)
+{
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+
+    return inodes[inumber];
+}
 
 size_t FileSystem::getInumber(const char *filename)
 {

@@ -19,7 +19,7 @@ fileSystemAPI::fileSystemAPI(const char *disk_path, size_t disk_blocks)
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
-    
+
     formatFileSystem();
 }
 
@@ -42,7 +42,7 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 
     //is the owner
     if(inode.OwnerUserID == users[currentUser].userID){
-        
+
         //select owner permissions
         mask = 0700;
         tmp = (mask & inode.Permissions);
@@ -73,7 +73,7 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 }
 
 fileSystemAPI *fileSystemAPI::getInstance(const char *disk_path, size_t disk_blocks)
-{   
+{
     //create instance if doesn't exist
     if(!instance)
         instance = new fileSystemAPI(disk_path, disk_blocks);
@@ -119,7 +119,7 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
 
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
-    users[index_user].permissions = 6;    
+    users[index_user].permissions = 6;
     totalUsers++;
 
     return true;
@@ -202,7 +202,7 @@ bool fileSystemAPI::unmountFileSystem()
 
 bool fileSystemAPI::formatFileSystem()
 {
-    
+
 
     return FileSystem::format(disk);
 }
@@ -229,7 +229,7 @@ bool fileSystemAPI::removeFile(const char *filename)
 statDetails fileSystemAPI::getFileStat(const char *filename)
 {
     size_t inumber = myFileSystem->getInumber(filename);
-    
+
     statDetails stats = myFileSystem->stat(inumber);
 
     return stats;
@@ -249,7 +249,7 @@ ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length,
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
         totalRead = myFileSystem->fs_read(inumber, data, length, offset);
-    
+
     return totalRead;
 }
 
@@ -305,7 +305,7 @@ void fileSystemAPI::readUsersFile()
 
         //ignore password
         token = strtok(NULL, ":");
-        
+
         //take userID
         token = strtok(NULL, ":");
         users[totalUsers].userID = atoi(token);
@@ -326,7 +326,7 @@ void fileSystemAPI::readUsersFile()
 }
 
 void fileSystemAPI::writeUsersFile(const char *filename)
-{   
+{
     size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0;
     char *data, *line;
 
