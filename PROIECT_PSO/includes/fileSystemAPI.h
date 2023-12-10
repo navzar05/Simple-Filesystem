@@ -12,18 +12,37 @@
 #define READ_PERMISSION 6
 
 struct User{
-    char username[USERNAME_LENGTH];
-    char password[PASSWORD_LENGTH];
+    char *username;
+    char *password;
     uint32_t userID;
     uint32_t groupID;
     uint32_t permissions;
 };
 
-
 class fileSystemAPI {
-public:
+private:
+    friend class FileSystem;
+    fileSystemAPI(Disk *disk_path, size_t disk_blocks);
+    ~fileSystemAPI();
 
-    static fileSystemAPI* getInstance(const char *disk_path, size_t disk_blocks);
+    static fileSystemAPI *instance;
+    static User *users;
+    static FileSystem *myFileSystem;
+    static Disk *disk;
+
+    static size_t totalUsers;
+    static size_t diskBlocks;
+    static size_t currentUser;
+    static size_t inumberUsersFile;
+    static size_t inumberPasswordsFile;
+    static size_t inumberGroupsFile;
+
+    bool hasPermissions(const char *filename, uint32_t mode);
+    void readImportantFile(const char *filename);
+    void writeImportantFile(const char *filename);
+
+public:
+    static fileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
     fileSystemAPI(fileSystemAPI&) = delete;
     static void destroyInstance();
 
@@ -46,25 +65,4 @@ public:
     ssize_t readFile(const char* filename, char *data, size_t length, size_t offset = 0);
     ssize_t writeFile(const char* filename, const char *data, size_t length, size_t offset = 0);
     bool execute(const char* filename);
-
-private:
-    friend class FileSystem;
-    fileSystemAPI(const char *disk_path, size_t disk_blocks);
-    ~fileSystemAPI();
-
-    static fileSystemAPI *instance;
-    static User *users;
-    static FileSystem *myFileSystem;
-    static Disk *disk;
-
-    static size_t totalUsers;
-    static size_t diskBlocks;
-    static size_t currentUser;
-    static size_t inumberUsersFile;
-    static size_t inumberPasswordsFile;
-    static size_t inumberGroupsFile;
-
-    bool hasPermissions(const char *filename, uint32_t mode);
-    void readImportantFile(const char *filename);
-    void writeImportantFile(const char *filename);
 };

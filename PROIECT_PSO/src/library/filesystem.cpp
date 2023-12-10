@@ -1,6 +1,5 @@
 #include "../../includes/filesystem.h"
 #include "../../includes/fileSystemAPI.h"
-#include "filesystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
 uint32_t FileSystem::POINTERS_PER_INODE = 0;
@@ -345,14 +344,12 @@ bool FileSystem::unmount(Disk *disk)
     return 0;
 }
 
-
 Inode FileSystem::getInode(size_t inumber)
 {
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
 
     return inodes[inumber];
 }
-
 
 size_t FileSystem::getInumber(const char *filename)
 {
@@ -361,8 +358,8 @@ size_t FileSystem::getInumber(const char *filename)
     //get the inode of the filename
     for(int i = 0; i < totalInodes ; i ++){
 
-        if(strncmp(inodes[i].Filename, filename, MAX_FILENAME_LENGTH) == 0){
-            printf("I found file= %s at index= %d!\n", filename, i);
+        if(strncmp(inodes[i].Filename, filename, (strlen(filename) + 1)) == 0){
+            printf("I found file= %s at index= %d\n", filename, i);
             return i;
         }
     }
@@ -372,9 +369,12 @@ size_t FileSystem::getInumber(const char *filename)
     return -1;
 }
 
-
 ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions)
 {
+    if(strlen(filename) > MAX_FILENAME_LENGTH){
+        fprintf(stderr, "Length incorect at filename= %s\n", filename);
+        return -1;
+    }
 
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
     for (int i = 0; i < this->totalInodes; i++) {
@@ -392,6 +392,8 @@ ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t
             inodes[i].OwnerGroupID = _OwnerGroupID;
             inodes[i].Permissions = _Permissions;
 
+            memset(inodes[i].Filename, '\0', MAX_FILENAME_LENGTH);
+
             printf("Inode created with index %d.\n", i);
             memcpy(inodes[i].Filename, filename, strlen(filename));
 
@@ -406,17 +408,10 @@ ssize_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t
         }
     }
 
+    //reached the maximum size
     fprintf(stderr,"Reached the maximum size\n");
-
     return -1;
-
-    //filename is copied from shell
-    //printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", index_inodes, inodes[index_inodes].Filename, inodes[index_inodes].Valid, inodes[index_inodes].Size,inodes[index_inodes].OwnerUserID, inodes[index_inodes].OwnerGroupID, inodes[index_inodes].Permissions );
-
-    //for(int i = fileSystemAPI::inumberUsersFile; i <= fileSystemAPI::inumberPasswordsFile; i ++)
-        //printf("Inodes in fs_create: inumber= %d valid= %d filename= %s!\n", i, inodes[i].Valid, inodes[i].Filename);
 }
-
 
 bool FileSystem::remove(size_t inumber)
 {
@@ -490,10 +485,7 @@ ssize_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t of
     SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
     char *start = nullptr;
-
-    for(int i = fileSystemAPI::inumberUsersFile; i <= fileSystemAPI::inumberPasswordsFile; i ++)
-        printf("Inodes in fs_read: inumber= %d valid= %d filename= %s!\n", i, auxInodeBlocks[i].Valid, auxInodeBlocks[i].Filename);
-
+    
     if (!auxInodeBlocks[inumber].Valid)  {
         fprintf(stderr, "Error on filesystem read. I-node invalid <%ld>.\n", inumber);
         return -1;
