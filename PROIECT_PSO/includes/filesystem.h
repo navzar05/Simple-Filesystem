@@ -4,7 +4,7 @@
 #include <sys/mman.h>
 #include "disk_driver.h"
 
-const static uint32_t MAX_FILENAME_LENGTH = 100 - 4; //de la pointer
+const static uint32_t MAX_FILENAME_LENGTH = 100 - 16; //de la pointer
 const static uint32_t MAGIC_NUMBER = 0x05112002;
 
 struct __attribute__ ((packed)) SuperBlock {
@@ -18,7 +18,7 @@ uint32_t Inodes;
 struct __attribute__ ((packed)) Inode {
     uint32_t Valid;
     uint32_t Size;
-    uint32_t *Direct; //[POINTERS_PER_INODE];
+    uint32_t Direct[5];
     uint32_t Indirect;
 
     uint32_t OwnerUserID;

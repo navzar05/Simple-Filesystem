@@ -8,8 +8,8 @@ size_t fileSystemAPI::totalUsers = 0;
 size_t fileSystemAPI::diskBlocks = 0;
 size_t fileSystemAPI::currentUser = 0;
 size_t fileSystemAPI::inumberUsersFile = 0;
-size_t fileSystemAPI::inumberPasswordsFile = 0;
-size_t fileSystemAPI::inumberGroupsFile = 0;
+size_t fileSystemAPI::inumberPasswordsFile = 1;
+size_t fileSystemAPI::inumberGroupsFile = 2;
 
 fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
@@ -18,19 +18,34 @@ fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
     this->users = new User[MAX_USERS]();
     this->totalUsers = 0;
     this->disk = disk_path;
+    disk_path->blocks = disk_blocks;
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
-    
-    formatFileSystem();
 
-    createFile(USERS_FILE, 1, 1, 0644);
-    createFile(PASSWORDS_FILE, 1, 1, 0644);
+    int ret = myFileSystem->mount(fileSystemAPI::disk);
+
+    //printf("Ret: %d\n", ret);
+
+    if (ret != 0) {
+        formatFileSystem();
+        createFile(USERS_FILE, 1, 1, 0644);
+        createFile(PASSWORDS_FILE, 1, 1, 0644);
+    }
+
+
+    /* createFile(USERS_FILE, 1, 1, 0644);
+    createFile(PASSWORDS_FILE, 1, 1, 0644); */
 
     // char *data = new char[Disk::BLOCK_SIZE];
     // disk->so_read(inumberUsersFile, data);
     // disk->so_read(inumberPasswordsFile, data);
     // delete data;
+
+    //DEBUG
+    Inode* aux = reinterpret_cast<Inode*>(myFileSystem->inodeBlocks);
+
+    printf("\tFile user.txt: name: %s size: %ld\n", aux[inumberUsersFile].Filename, aux[inumberUsersFile].Size);
 
     //read users who already exists
     readImportantFile(USERS_FILE);
@@ -41,7 +56,7 @@ fileSystemAPI::~fileSystemAPI()
     //write users in file
     writeImportantFile(USERS_FILE);
     writeImportantFile(PASSWORDS_FILE);
-
+    myFileSystem->unmount(disk);
     //delete this->users;
    // delete this->myFileSystem;
 }
@@ -240,7 +255,7 @@ bool fileSystemAPI::formatFileSystem()
 ssize_t fileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions)
 {
     size_t ret;
-    
+
     ret = myFileSystem->create(filename, ownerUserID, ownerGroupID, permissions);
 
     //printf("(Inside createFile)First: ret= %d\n%s\n and second:\n %s\n", ret, myFileSystem->inodeBlocks, FileSystem::inodeBlocks);
@@ -318,17 +333,17 @@ bool fileSystemAPI::execute(const char *filename)
 
 void fileSystemAPI::readImportantFile(const char *filename)
 {
-    printf("Enter readImportantFile() with file= %s!\n", filename);
+    printf("\tEnter readImportantFile() with file= %s!\n", filename);
     char *data, *token;
 
     data = new char[Disk::BLOCK_SIZE + 1]{};
 
     myFileSystem->fs_read(inumberUsersFile, data, Disk::BLOCK_SIZE, 0);
-    
-    printf("Data with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
+
+    printf("\tData with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
 
     if(data[0] == '\0'){
-        fprintf(stderr, "Fisierul %s nu este populat!\n", filename);
+        fprintf(stderr, "\tFisierul %s nu este populat!\n", filename);
         return;
     }
 
@@ -371,7 +386,7 @@ void fileSystemAPI::readImportantFile(const char *filename)
 }
 
 void fileSystemAPI::writeImportantFile(const char *filename)
-{   
+{
     printf("Enter writeImportantFile() with file= %s!\n", filename);
 
     size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0;
@@ -384,7 +399,7 @@ void fileSystemAPI::writeImportantFile(const char *filename)
     for(int i = 0; i < totalUsers; i ++){
 
         line = new char [length + 2]{};
-        
+
         if(strncmp(USERS_FILE, filename, (strlen(USERS_FILE) + 1)) == 0){
             snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
         }

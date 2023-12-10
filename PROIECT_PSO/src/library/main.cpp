@@ -4,10 +4,10 @@
 int main(){
     Disk *disk = new Disk();
     disk->disk_open("./bin/file.txt", 20);
-    // char* block1 = new char[Disk::BLOCK_SIZE];
-    // char buffer[1024] = { 0 };
-    // FileSystem *fs = new FileSystem(disk);
-    // FileSystem::format(disk);
+    char* block1 = new char[Disk::BLOCK_SIZE];
+    char buffer[1024] = { 0 };
+    FileSystem *fs = new FileSystem(disk);
+    //FileSystem::format(disk);
 
     // printf("\nUnmount test:\n");
     // FileSystem::unmount(disk);
@@ -25,11 +25,11 @@ int main(){
     // // SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     // // printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
 
-    // size_t testInode = fs->create("sefu.txt",1,1, 0666);
+    //size_t testInode = fs->create("sefu.txt",1,1, 0666);
 
-    // fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
+    //fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
-    // fs->fs_read(testInode, buffer, 1024, 0);
+    // fs->fs_read(0, buffer, 1024, 0);
 
     // size_t testInode1 = fs->create("sefu1.txt",1,1, 0666);
 
@@ -39,24 +39,27 @@ int main(){
 
     // printf("Data read: %s\n", buffer);
 
-    // delete[] block1;
-
     // delete fs;
 
+    // delete[] block1;
+
+
     //FileSystemAPI tests
-     ///* 
-     printf("\n\n Tests on fileSystemAPI\n\n");
+     ///*
+    printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance(disk, 30);
 
-    fsAPI->createUser("root", "rtqgoqmvp123.", 1);
+   /*  fsAPI->createUser("root", "rtqgoqmvp123.", 1);
     fsAPI->createUser("SefuThau", "euSuntsmecheru", 8);
     fsAPI->createUser("SefuThau", "euSuntsmecheru", 4);
     fsAPI->createUser("Ciocanul","idolu_la_femei",2);
     fsAPI->createUser("Ionel","cuceritorul",3);
-    fsAPI->createUser("Ciocanul","idolu_la_femei",5);
+    fsAPI->createUser("Ciocanul","idolu_la_femei",5); */
 
-    fileSystemAPI::destroyInstance(); 
+    fileSystemAPI::destroyInstance();
+
+
     //*/
 
 
