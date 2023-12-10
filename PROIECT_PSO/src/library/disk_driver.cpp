@@ -40,6 +40,8 @@ bool Disk::so_read(size_t blocknum, char *data, size_t size) {
         return -1;
     }
 
+    printf("Inside so_read() with size= %d I read= %d which is in data= %s\n", size, readbytes, data);
+
 /*     if (size < Disk::BLOCK_SIZE) {
         memset(data + size, 0, Disk::BLOCK_SIZE - size); // Zero out the rest
     } */

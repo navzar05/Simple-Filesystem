@@ -319,12 +319,43 @@ bool fileSystemAPI::execute(const char *filename)
 void fileSystemAPI::readImportantFile(const char *filename)
 {
     printf("Enter readImportantFile() with file= %s!\n", filename);
+    size_t inumber = myFileSystem->getInumber(filename);
+
+    printf("Inumber for users_file.txt is %d %d\n", inumberUsersFile, inumber);
     char *data, *token;
 
     data = new char[Disk::BLOCK_SIZE + 1]{};
 
     myFileSystem->fs_read(inumberUsersFile, data, Disk::BLOCK_SIZE, 0);
     
+    disk->so_read(5, data, Disk::BLOCK_SIZE);
+    printf("Read blocknum: %d\n", 5);
+    for(int i = 0; i < (strlen(data) + 1); i ++){
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
+    disk->so_read(6, data, Disk::BLOCK_SIZE);
+    printf("Read blocknum: %d\n", 6);
+    for(int i = 0; i < (strlen(data) + 1); i ++){
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
+    disk->so_read(7, data, Disk::BLOCK_SIZE);
+    printf("Read blocknum: %d\n", 7);
+    for(int i = 0; i < (strlen(data) + 1); i ++){
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
+    disk->so_read(8, data, Disk::BLOCK_SIZE);
+    printf("Read blocknum: %d\n", 8);
+    for(int i = 0; i < (strlen(data) + 1); i ++){
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
     printf("Data with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
 
     if(data[0] == '\0'){
