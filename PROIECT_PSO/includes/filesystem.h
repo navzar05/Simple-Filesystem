@@ -79,11 +79,11 @@ public:
     size_t getInumber(const char *filename);
     Inode getInode(size_t inumber);
 
-    ssize_t create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
+    size_t create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
     bool    remove(size_t inumber);
     statDetails stat(size_t inumber);
 
-    ssize_t fs_read(size_t inumber, char *data, size_t length, size_t offset);
-    ssize_t fs_write(size_t inumber, const char *data, size_t length, size_t offset);
+    size_t fs_read(size_t inumber, char *data, size_t length, size_t offset);
+    size_t fs_write(size_t inumber, const char *data, size_t length, size_t offset);
 };
 #endif
