@@ -11,22 +11,17 @@ size_t fileSystemAPI::inumberUsersFile = 0;
 size_t fileSystemAPI::inumberPasswordsFile = 0;
 size_t fileSystemAPI::inumberGroupsFile = 0;
 
-fileSystemAPI::fileSystemAPI(const char *disk_path, size_t disk_blocks)
+fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
-    printf("sizeof(User): %d\n", sizeof(User));
-
     //initialize variables
     this->diskBlocks = disk_blocks;
     this->users = new User[MAX_USERS]();
     this->totalUsers = 0;
-
-    //initialise Disk
-    disk = new Disk();
-    disk->disk_open(disk_path, disk_blocks);
+    this->disk = disk_path;
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
-
+    
     formatFileSystem();
 
     createFile(USERS_FILE, 1, 1, 0644);
@@ -90,7 +85,7 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     return false;
 }
 
-fileSystemAPI *fileSystemAPI::getInstance(const char *disk_path, size_t disk_blocks)
+fileSystemAPI *fileSystemAPI::getInstance(Disk *disk_path, size_t disk_blocks)
 {
     //create instance if doesn't exist
     if(!instance)
@@ -110,9 +105,15 @@ void fileSystemAPI::destroyInstance()
 
 bool fileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
 {
-    size_t index_user;
+    //length of username and password should be lower than the defined length
+    if(strlen(username) > USERNAME_LENGTH || strlen(password) > PASSWORD_LENGTH){
+        fprintf(stderr, "Length given incorrect!\n");
+        return false;
+    }
 
     printf("Enter createUser()!\n");
+
+    size_t index_user;
 
     //check if user exist
     for(int i = 0; i < totalUsers; i ++){
@@ -124,6 +125,7 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
         }
     }
 
+    //find valid user index
     for(int i = 0; i < MAX_USERS; i ++){
         if(users[i].userID == 0){
             index_user = i;
@@ -131,12 +133,15 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
         }
     }
 
-    memcpy(users[index_user].username, username, USERNAME_LENGTH + 1);
-    memcpy(users[index_user].password, password, PASSWORD_LENGTH + 1);
+    //initialise username and password
+    users[index_user].username = new char[strlen(username) + 1]{};
+    users[index_user].password = new char[strlen(password) + 1]{};
 
-    users[index_user].username[USERNAME_LENGTH] = '\0';
-    users[index_user].password[PASSWORD_LENGTH] = '\0';
+    //copy username and password
+    memcpy(users[index_user].username, username, strlen(username));
+    memcpy(users[index_user].password, password, strlen(password));
 
+    //set userID, groupID and permissons
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
     users[index_user].permissions = 6;
@@ -144,7 +149,7 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
 
     printf("S-a creat la index= %d: %s %s %d %d %d\n", index_user,users[index_user].username,users[index_user].password, users[index_user].userID, users[index_user].groupID, users[index_user].permissions);
 
-    //printf("Exit create ok!\n");
+    printf("Exit create ok!\n");
     return true;
 }
 
@@ -273,6 +278,9 @@ ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length,
     size_t totalRead;
     Inode inode = myFileSystem->getInode(inumber);
 
+    //handle the allocation of data
+    data = new char[length + 1]{};
+
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
         totalRead = myFileSystem->fs_read(inumber, data, length, offset);
@@ -310,9 +318,10 @@ bool fileSystemAPI::execute(const char *filename)
 
 void fileSystemAPI::readImportantFile(const char *filename)
 {
+    printf("Enter readImportantFile() with file= %s!\n", filename);
     char *data, *token;
 
-    data = new char[Disk::BLOCK_SIZE + 1]();
+    data = new char[Disk::BLOCK_SIZE + 1]{};
 
     myFileSystem->fs_read(inumberUsersFile, data, Disk::BLOCK_SIZE, 0);
     
@@ -352,9 +361,13 @@ void fileSystemAPI::readImportantFile(const char *filename)
         totalUsers ++;
     }
 
-    printf("Data with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
-    printf("Exit readUsers ok!\n");
+    for(int i = 0; i < totalUsers; i ++){
+        printf("S-a citit de la index= %d: %s %s %d %d %d\n", i,users[i].username,users[i].password, users[i].userID, users[i].groupID, users[i].permissions);
+    }
 
+    delete data;
+
+    printf("Exit readUsers ok!\n");
 }
 
 void fileSystemAPI::writeImportantFile(const char *filename)
@@ -366,18 +379,18 @@ void fileSystemAPI::writeImportantFile(const char *filename)
 
     inumber = myFileSystem->getInumber(filename);
 
-    data = new char[Disk::BLOCK_SIZE]();
+    data = new char[Disk::BLOCK_SIZE + 1]{};
 
     for(int i = 0; i < totalUsers; i ++){
 
-        line = new char [length]();
+        line = new char [length + 2]{};
         
-        if(strncmp(USERS_FILE, filename, strlen(USERS_FILE)) == 0){
+        if(strncmp(USERS_FILE, filename, (strlen(USERS_FILE) + 1)) == 0){
             snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
         }
-        else{
+        else if(strncmp(PASSWORDS_FILE, filename, (strlen(PASSWORDS_FILE) + 1)) == 0){
             snprintf(line, length, "%s:%s\n", users[i].username, users[i].password);
-        }
+         }
 
         memcpy(data + sizeRead, line, strlen(line));
         sizeRead += strlen(line);
@@ -388,5 +401,7 @@ void fileSystemAPI::writeImportantFile(const char *filename)
 
     printf("Data = \n%s", data);
 
-    //printf("Exit writeUsers ok!\n");
+    delete data;
+
+    printf("Exit writeUsers ok!\n");
 }
