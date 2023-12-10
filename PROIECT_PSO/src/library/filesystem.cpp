@@ -397,11 +397,11 @@ size_t FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t 
             printf("Inode created with index %d.\n", i);
             memcpy(inodes[i].Filename, filename, strlen(filename));
 
-            if(checkImportantFiles(filename, i))
+/*             if(checkImportantFiles(filename, i))
                 inodes[i].Size = 4095;
             else
                 inodes[i].Size = 0;
-
+ */
             printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", i, inodes[i].Filename, inodes[i].Valid, inodes[i].Size,inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Permissions );
 
             return i;
@@ -500,13 +500,18 @@ size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t off
     size_t minblock = FileSystem::floorDiv(offset, Disk::BLOCK_SIZE);
     size_t maxblock = minblock + FileSystem::floorDiv(length, Disk::BLOCK_SIZE);
 
-    if (minblock > blocks_of_file)
+    printf("block of file %ld minblock %ld maxblock %ld\n", blocks_of_file, minblock, maxblock);
+
+    if (minblock > blocks_of_file || blocks_of_file == 0)
         return 0;
 
     if (maxblock > blocks_of_file) {
         maxblock = blocks_of_file - 1;
         length = auxInodeBlocks[inumber].Size - offset;
     }
+
+    printf("block of file %ld minblock %ld maxblock %ld\n", blocks_of_file, minblock, maxblock);
+
 
     start = (char*)mmap(NULL, (maxblock - minblock + 1) * Disk::BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
