@@ -1,12 +1,15 @@
 #include "filesystem.h"
 
 #define MAX_USERS 10
+#define MAX_GROUPS 10
+
 #define USERS_FILE "users_file.txt"
 #define PASSWORDS_FILE "passwords_file.txt"
 #define GROUPS_FILE "groups_file.txt"
 
 #define USERNAME_LENGTH 20
 #define PASSWORD_LENGTH 20
+#define GROUP_LENGTH 20
 
 #define WRITE_PERMISSION 4
 #define READ_PERMISSION 6
@@ -19,6 +22,13 @@ struct User{
     uint32_t permissions;
 };
 
+struct Group{
+    char *groupname;
+    uint32_t groupID;
+    uint32_t *usersID;
+    int nrUsers;
+};
+
 class fileSystemAPI {
 private:
     friend class FileSystem;
@@ -29,17 +39,30 @@ private:
     static User *users;
     static FileSystem *myFileSystem;
     static Disk *disk;
+    static Group *groups;
 
     static size_t totalUsers;
+    static size_t totalGroups;
     static size_t diskBlocks;
     static size_t currentUser;
-    static size_t inumberUsersFile;
-    static size_t inumberPasswordsFile;
-    static size_t inumberGroupsFile;
+
+    static bool isUsersFile;
+    static bool isPasswordsFile;
+    static bool isGroupsFile;
 
     bool hasPermissions(const char *filename, uint32_t mode);
+
     void readImportantFile(const char *filename);
+    void readUsersFile(const char *token, int index);
+    void readPassswordsFile(const char *token, int index);
+    void readGroupsFile(const char *token, int index);
+
     void writeImportantFile(const char *filename);
+    void writeUsersFile(char *line, size_t length, int i);
+    void writePasswordsFile(char *line, size_t length, int i);
+    void writeGroupsFile(char *line, size_t length, int i);
+
+    void seeTypeImportantFile(const char *filename);
 
 public:
     static fileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
@@ -49,7 +72,8 @@ public:
     bool createUser(const char *username, const char *password, uint32_t userID);
     bool deleteUser(uint32_t userID);
     bool setUserGroup(uint32_t userID, uint32_t groupID); //schimba grupul userului
-    bool addUserToGroup(uint32_t userID, uint32_t groupID); //adauga la un grup
+    bool createGroup(const char *groupname, uint32_t groupID);
+    bool deleteGroup(uint32_t groupID);
 
     bool setFilePermissions(const char* filename, uint32_t permissions);
     uint32_t getFilePermissions(const char* filename);

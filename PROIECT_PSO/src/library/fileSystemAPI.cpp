@@ -4,19 +4,23 @@ fileSystemAPI *fileSystemAPI::instance = nullptr;
 User *fileSystemAPI::users = nullptr;
 FileSystem *fileSystemAPI::myFileSystem = nullptr;
 Disk *fileSystemAPI::disk = nullptr;
+Group *fileSystemAPI::groups = nullptr;
+
 size_t fileSystemAPI::totalUsers = 0;
+size_t fileSystemAPI::totalGroups = 0;
 size_t fileSystemAPI::diskBlocks = 0;
 size_t fileSystemAPI::currentUser = 0;
-size_t fileSystemAPI::inumberUsersFile = 0;
-size_t fileSystemAPI::inumberPasswordsFile = 1;
-size_t fileSystemAPI::inumberGroupsFile = 2;
+
+bool fileSystemAPI::isUsersFile = false;
+bool fileSystemAPI::isPasswordsFile = false;
+bool fileSystemAPI::isGroupsFile = false;
 
 fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
-    //initialize variables
+    //initialize variables0
     this->diskBlocks = disk_blocks;
-    this->users = new User[MAX_USERS]();
-    this->totalUsers = 0;
+    this->users = new User[MAX_USERS]{};
+    this->groups = new Group[MAX_GROUPS]{};
     this->disk = disk_path;
     disk_path->blocks = disk_blocks;
 
@@ -31,32 +35,22 @@ fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
         formatFileSystem();
         createFile(USERS_FILE, 1, 1, 0644);
         createFile(PASSWORDS_FILE, 1, 1, 0644);
+        createFile(GROUPS_FILE, 1, 1, 0644);
     }
 
-
-    /* createFile(USERS_FILE, 1, 1, 0644);
-    createFile(PASSWORDS_FILE, 1, 1, 0644); */
-
-    // char *data = new char[Disk::BLOCK_SIZE];
-    // disk->so_read(inumberUsersFile, data);
-    // disk->so_read(inumberPasswordsFile, data);
-    // delete data;
-
-    //DEBUG
-    Inode* aux = reinterpret_cast<Inode*>(myFileSystem->inodeBlocks);
-
-    printf("\tFile user.txt: name: %s size: %ld\n", aux[inumberUsersFile].Filename, aux[inumberUsersFile].Size);
-
-    //read users who already exists
     readImportantFile(USERS_FILE);
+    readImportantFile(PASSWORDS_FILE);
+    readImportantFile(GROUPS_FILE);
 }
 
 fileSystemAPI::~fileSystemAPI()
 {
-    //write users in file
+    //write in important files
     writeImportantFile(USERS_FILE);
     writeImportantFile(PASSWORDS_FILE);
-    myFileSystem->unmount(disk);
+    writeImportantFile(GROUPS_FILE);
+
+    unmountFileSystem();
     //delete this->users;
    // delete this->myFileSystem;
 }
@@ -120,15 +114,26 @@ void fileSystemAPI::destroyInstance()
 
 bool fileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
 {
-    //length of username and password should be lower than the defined length
-    if(strlen(username) > USERNAME_LENGTH || strlen(password) > PASSWORD_LENGTH){
-        fprintf(stderr, "Length given incorrect!\n");
-        return false;
-    }
-
     printf("Enter createUser()!\n");
 
     size_t index_user;
+    bool isSpace = false;
+
+    //can't create if is maximum users
+    if(totalUsers == MAX_USERS){
+        fprintf(stderr, "Maximum users reached!\n");
+    }
+
+    //length of username and password should be lower than the defined length
+    if(strlen(username) > USERNAME_LENGTH){
+        fprintf(stderr, "Length incorrect at username!\n");
+        return false;
+    }
+
+    else if(strlen(password) > PASSWORD_LENGTH){
+        fprintf(stderr, "Length incorrect at password!\n");
+        return false;
+    }
 
     //check if user exist
     for(int i = 0; i < totalUsers; i ++){
@@ -144,8 +149,14 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
     for(int i = 0; i < MAX_USERS; i ++){
         if(users[i].userID == 0){
             index_user = i;
+            isSpace = true;
             break;
         }
+    }
+
+    if(!isSpace){
+        fprintf(stderr, "Maximum size at users reached!\n");
+        return false;
     }
 
     //initialise username and password
@@ -174,12 +185,20 @@ bool fileSystemAPI::deleteUser(uint32_t userID)
     //check if user exist
     for(int i = 0; i < totalUsers; i++){
         if(users[i].userID == userID){
+
+            //reset if exists in a group
+            for(int j = 0; j < totalGroups; j ++){
+                for(int k = 0; k < groups[j].nrUsers; k ++){
+                    if(groups[j].usersID[k] == userID)
+                        groups[j].usersID[k] = 0;
+                }
+            }
+
             delete users[i].username;
             delete users[i].password;
             users[i].userID = 0;
             users[i].groupID = 0;
             users[i].permissions = 0;
-            totalUsers--;
 
             printf("Exit delete ok!\n");
             return true;
@@ -187,27 +206,138 @@ bool fileSystemAPI::deleteUser(uint32_t userID)
     }
 
     fprintf(stderr, "User with id %d doesn't exist!\n", userID);
-    //printf("Exit delete with error!\n");
     return false;
 }
 
 bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 {
+    //check if has space
+    for(int i = 0; i < totalGroups; i ++){
+        if(groups[i].groupID == groupID && groups[i].nrUsers == MAX_USERS){
+            fprintf(stderr, "No more space for another user in group= %s\n", groups[i].groupname);
+            return false;
+        }
+    }
+
+    //find the user
     for(int i = 0; i < totalUsers; i ++){
         if(users[i].userID == userID){
-            users[i].groupID = groupID;
+
+            //check if already has the groupID desired
+            if(users[i].groupID == groupID){
+                fprintf(stderr, "User= %s already has the groupID= %d\n", users[i].username, groupID);
+                return false;
+            }
+
+            //reset groupID for user if he is a traitor
+            users[i].groupID = 0;
+
+            //find the groupID
+            for(int j = 0; j < totalGroups; j ++){
+
+                //delete user if exist in another group
+                for(int k = 0; k < groups[j].nrUsers; k ++){
+                    if(groups[j].usersID[k] == userID && groups[j].groupID != groupID){
+                        groups[j].usersID[k] == 0;
+                    }
+                }
+
+                //change if exists and update the users from group
+                if(groups[j].groupID == groupID){
+                    users[i].groupID = groupID;
+                    groups[j].usersID[groups[j].nrUsers] = userID;
+                    groups[j].nrUsers ++;
+
+                    printf("User= %d changed his group to= %d\n", userID, groupID);
+                    return true;
+                }
+            }
+
+            fprintf(stderr, "Group with ID= %d not found!\n", groupID);
+            return false;
+        }
+    }
+
+    fprintf(stderr, "User with ID= %d not found!\n", userID);
+    return false;
+}
+
+bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
+{   
+    size_t index;
+    bool isSpace = false;
+
+    //check groupname length
+    if(strlen(groupname) > GROUP_LENGTH){
+        fprintf(stderr, "Length incorrect at groupname!\n");
+        return false;
+    }
+    
+    //check if already exists
+    for(int i = 0; i < totalGroups; i ++){
+        if(strncmp(groups[i].groupname, groupname, (strlen(groupname) + 1)) == 0){
+            fprintf(stderr,"Group with name= %s already exists!\n");
+            return false;
+        }
+
+        else if(groups[i].groupID == groupID){
+            fprintf(stderr, "Group with ID= %d already exists!\n", groupID);
+            return false;
+        }
+    }
+
+    //set index
+    for(int i = 0; i < MAX_GROUPS; i ++){
+        if(groups[i].groupID == 0){
+            index = i;
+            isSpace = true;
+            break;
+        }
+    }
+
+    //no space
+    if(!isSpace){
+        fprintf(stderr, "Maximum groups reached!\n");
+        return false;
+    }
+
+    //allocate
+    groups[index].groupname = new char[strlen(groupname) + 1]{};
+    groups[index].usersID = new uint32_t[MAX_USERS]{};
+
+    memcpy(groups[index].groupname, groupname, strlen(groupname));
+    groups[index].groupID = groupID;
+    groups[index].nrUsers = 0;
+    totalGroups++;
+
+    printf("Group with name= %s and ID= %d created!\n", groups[index].groupname, groups[index].groupID);
+
+    return true;
+}
+
+bool fileSystemAPI::deleteGroup(uint32_t groupID)
+{
+    for(int i = 0; i < totalGroups; i ++){
+        if(groups[i].groupID == groupID){
+            
+            //reset groupID if exists in a user to 0
+            for(int j = 0; j < groups[i].nrUsers; j ++){
+                for(int k = 0; k < totalUsers; k ++){
+                    if(groups[i].usersID[j] == users[k].userID)
+                        users[k].groupID = 0;
+                }
+            }
+
+            delete groups[i].groupname;
+            delete groups[i].usersID;
+
+            printf("Group with name= %s and ID= %d deleted!\n", groups[i].groupname, groups[i].groupID);
+
             return true;
         }
     }
 
-    fprintf(stderr, "User with ID %d not found!\n", userID);
-    return false;
-}
-
-bool fileSystemAPI::addUserToGroup(uint32_t userID, uint32_t groupID)
-{
-
-
+    fprintf(stderr, "Group with ID= %d not found!\n", groupID);
     return false;
 }
 
@@ -244,7 +374,7 @@ bool fileSystemAPI::mountFileSystem()
 
 bool fileSystemAPI::unmountFileSystem()
 {
-    return myFileSystem->mount(disk);
+    return myFileSystem->unmount(disk);
 }
 
 bool fileSystemAPI::formatFileSystem()
@@ -257,8 +387,6 @@ ssize_t fileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, ui
     size_t ret;
 
     ret = myFileSystem->create(filename, ownerUserID, ownerGroupID, permissions);
-
-    //printf("(Inside createFile)First: ret= %d\n%s\n and second:\n %s\n", ret, myFileSystem->inodeBlocks, FileSystem::inodeBlocks);
 
     return ret;
 }
@@ -327,21 +455,25 @@ ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t 
 
 bool fileSystemAPI::execute(const char *filename)
 {
-
     return false;
 }
 
 void fileSystemAPI::readImportantFile(const char *filename)
 {
     printf("\tEnter readImportantFile() with file= %s!\n", filename);
-    char *data, *token;
+    char *data, *token, *str;
+    int index = 0;
+    size_t inumber;
 
     data = new char[Disk::BLOCK_SIZE + 1]{};
 
-    myFileSystem->fs_read(inumberUsersFile, data, Disk::BLOCK_SIZE, 0);
+    //find inumber and read
+    inumber = myFileSystem->getInumber(filename);
+    myFileSystem->fs_read(inumber, data, Disk::BLOCK_SIZE, 0);
 
     printf("\tData with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
 
+    //check if is populate
     if(data[0] == '\0'){
         fprintf(stderr, "\tFisierul %s nu este populat!\n", filename);
         return;
@@ -349,32 +481,48 @@ void fileSystemAPI::readImportantFile(const char *filename)
 
     printf("Fisierul %s este populat!\n", filename);
 
-    token = strtok(data, ":");
+    //allocate for strtok in another string where I have permissions
+    str = new char[Disk::BLOCK_SIZE + 1]{};
+    memcpy(str, data, Disk::BLOCK_SIZE);
+
+    //see what file is
+    seeTypeImportantFile(filename);
+
+    //choose how to tokenize
+    if(isGroupsFile)
+        token = strtok(str, "\n");
+    else
+        token = strtok(str, ":");
 
     while(token != NULL){
+        printf("token at start= %s\n", token);
+        //call specific function
+        if(isUsersFile)
+            readUsersFile(token, index);
 
-        //read username
-        memcpy(users[totalUsers].username, token, strlen(token) + 1);
+        else if(isPasswordsFile)
+            readPassswordsFile(token, index);
 
-        //ignore password
-        token = strtok(NULL, ":");
-
-        //take userID
-        token = strtok(NULL, ":");
-        users[totalUsers].userID = atoi(token);
-
-        //take groupID
-        token = strtok(NULL, ":");
-        users[totalUsers].groupID = atoi(token);
-
-        //take permissions
-        token = strtok(NULL, "\n");
-        users[totalUsers].permissions = atoi(token);
+        else if(isGroupsFile)
+            readGroupsFile(token, index);
 
         //go next
-        token = strtok(NULL, ":");
-        totalUsers ++;
+        if(isGroupsFile)
+            token = strtok(NULL, ":\n");
+        else
+            token = strtok(NULL, ":");
+
+        index ++;
+
+        printf("token at the end= %s\n", token);
     }
+
+    //set total
+    if(isUsersFile)
+        totalUsers = index;
+
+    else if(isGroupsFile)
+        totalGroups = index;
 
     for(int i = 0; i < totalUsers; i ++){
         printf("S-a citit de la index= %d: %s %s %d %d %d\n", i,users[i].username,users[i].password, users[i].userID, users[i].groupID, users[i].permissions);
@@ -385,27 +533,129 @@ void fileSystemAPI::readImportantFile(const char *filename)
     printf("Exit readUsers ok!\n");
 }
 
+void fileSystemAPI::readUsersFile(const char *token, int index)
+{
+    //read username 
+    printf("username= %s\t", token);
+    users[index].username = new char[strlen(token) + 1]{};
+    memcpy(users[index].username, token, strlen(token));
+    token = strtok(NULL, ":");
+
+    //ignore password
+    printf("password= %s\t", token);
+    token = strtok(NULL, ":");
+
+    //take userID
+    printf("userID= %s\t", token);
+    users[index].userID = atoi(token);
+    token = strtok(NULL, ":");
+
+    //take groupID
+    printf("groupID= %s\t", token);
+    users[index].groupID = atoi(token);
+    token = strtok(NULL, "\n");
+
+    //take permissions
+    printf("permissions= %s\n", token);
+    users[index].permissions = atoi(token);
+}
+
+void fileSystemAPI::readPassswordsFile(const char *token, int index)
+{
+    //read username
+    printf("username= %s\t", token);
+    token = strtok(NULL, "\n");
+
+    //read password
+    printf("password= %s\n", token);
+    users[index].password = new char[strlen(token) + 1]{};
+    memcpy(users[index].password, token, strlen(token));
+}
+
+void fileSystemAPI::readGroupsFile(const char *token, int index)
+{
+    printf("Enter readGroupsFile!\n");
+    char *str2, *token2;
+
+    //alloc
+    str2 = new char[strlen(token) + 1]{};
+    memcpy(str2, token, strlen(token));
+
+    printf("str2= %s\n", str2);
+
+    token2 = strtok(str2, ":");
+
+    printf("token2= %s\n", token2);
+
+    //read groupname
+    printf("groupname= %s\t", token2);
+    groups[index].groupname = new char[strlen(token2) + 1]{};
+    token2 = strtok(NULL, ":");
+
+    //skip after x
+    token2 = strtok(NULL, ":");
+
+    //take groupID
+    printf("groupID= %s\t", token2);
+    groups[index].groupID = atoi(token2);
+    token2 = strtok(NULL, ":\n");
+
+    //check if has users
+    if(token2 == NULL){
+        printf("Has no users!\n");
+        return;
+    }
+    
+    //read user by user
+    while(token2 != NULL){
+        printf(" user[%d]= %s\n",groups[index].nrUsers, token2);
+        groups[index].usersID[groups[index].nrUsers] = atoi(token2);
+        groups[index].nrUsers ++;
+
+        token2 = strtok(NULL, ":");
+    }
+
+    delete str2;
+}
+
 void fileSystemAPI::writeImportantFile(const char *filename)
 {
     printf("Enter writeImportantFile() with file= %s!\n", filename);
 
-    size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0;
+    size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0, totalToRead;
     char *data, *line;
 
+    //get the inumber for the current file
     inumber = myFileSystem->getInumber(filename);
 
     data = new char[Disk::BLOCK_SIZE + 1]{};
 
-    for(int i = 0; i < totalUsers; i ++){
+    //see what file is
+    seeTypeImportantFile(filename);
+
+    //select how much to read
+    if(isGroupsFile)
+        totalToRead = totalGroups;
+    else
+        totalToRead = totalUsers;
+
+    printf("Have totalGroups= %d\n", totalGroups);
+
+    //write in line
+    for(int i = 0; i < totalToRead; i ++){
 
         line = new char [length + 2]{};
 
-        if(strncmp(USERS_FILE, filename, (strlen(USERS_FILE) + 1)) == 0){
-            snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
-        }
-        else if(strncmp(PASSWORDS_FILE, filename, (strlen(PASSWORDS_FILE) + 1)) == 0){
-            snprintf(line, length, "%s:%s\n", users[i].username, users[i].password);
-         }
+        //select how to write
+        if(isUsersFile)
+            writeUsersFile(line, length, i);
+
+        else if(isPasswordsFile)
+            writePasswordsFile(line, length, i);
+
+        else if(isGroupsFile)
+            writeGroupsFile(line, length, i);
+        
 
         memcpy(data + sizeRead, line, strlen(line));
         sizeRead += strlen(line);
@@ -420,3 +670,59 @@ void fileSystemAPI::writeImportantFile(const char *filename)
 
     printf("Exit writeUsers ok!\n");
 }
+
+void fileSystemAPI::writeUsersFile(char *line, size_t length, int i)
+{
+    printf("Enter writeUsersFile!\n");
+
+    if(users[i].userID != 0)
+        snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
+    else
+        line[0] = '\0';
+}
+
+void fileSystemAPI::writePasswordsFile(char *line, size_t length, int i)
+{
+    printf("Enter writePasswordsFile!\n");
+
+    if(users[i].userID != 0)
+        snprintf(line, length, "%s:%s\n", users[i].username, users[i].password);
+    else
+        line[0] = '\0';    
+}
+
+void fileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
+{   
+    printf("Enter writeGroupsFile!\n");
+
+    int totalWritten = 0;
+
+    //read name and groupID
+    int written = snprintf(line, length, "%s:x:%d", groups[i].groupname, groups[i].groupID);
+    totalWritten += written;
+
+    //read every user from that group
+    for(int j = 0; j < groups[i].nrUsers; j ++){
+        written = snprintf(line + totalWritten, length - totalWritten, ":%d", groups[i].usersID[j]);
+        totalWritten += written;
+    }
+
+    snprintf(line + totalWritten, length - totalWritten, "\n");
+}
+
+void fileSystemAPI::seeTypeImportantFile(const char *filename)
+{
+    isUsersFile = false;
+    isPasswordsFile = false;
+    isGroupsFile = false;
+
+    if(strncmp(USERS_FILE, filename, (strlen(filename) + 1)) == 0)
+        isUsersFile = true;
+
+    else if(strncmp(PASSWORDS_FILE, filename, (strlen(filename) + 1)) == 0)
+        isPasswordsFile = true;
+
+    else if(strncmp(GROUPS_FILE, filename, (strlen(filename) + 1)) == 0)
+        isGroupsFile = true;
+}
+

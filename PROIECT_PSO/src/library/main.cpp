@@ -4,9 +4,9 @@
 int main(){
     Disk *disk = new Disk();
     disk->disk_open("./bin/file.txt", 20);
-    char* block1 = new char[Disk::BLOCK_SIZE];
-    char buffer[1024] = { 0 };
-    FileSystem *fs = new FileSystem(disk);
+    // char* block1 = new char[Disk::BLOCK_SIZE];
+    // char buffer[1024] = { 0 };
+    // FileSystem *fs = new FileSystem(disk);
     //FileSystem::format(disk);
 
     // printf("\nUnmount test:\n");
@@ -45,20 +45,27 @@ int main(){
 
 
     //FileSystemAPI tests
+
+
      ///*
     printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance(disk, 30);
 
-   /*  fsAPI->createUser("root", "rtqgoqmvp123.", 1);
+    fsAPI->createUser("root", "rtqgoqmvp123.", 1);
     fsAPI->createUser("SefuThau", "euSuntsmecheru", 8);
     fsAPI->createUser("SefuThau", "euSuntsmecheru", 4);
     fsAPI->createUser("Ciocanul","idolu_la_femei",2);
     fsAPI->createUser("Ionel","cuceritorul",3);
-    fsAPI->createUser("Ciocanul","idolu_la_femei",5); */
+    fsAPI->createUser("Ciocanul","idolu_la_femei",5);
+
+    //fsAPI->deleteUser(3);
+    fsAPI->deleteUser(1);
+
+    fsAPI->createGroup("root", 1);
+    //fsAPI->createGroup("slaves", 2);
 
     fileSystemAPI::destroyInstance();
-
 
     //*/
 
