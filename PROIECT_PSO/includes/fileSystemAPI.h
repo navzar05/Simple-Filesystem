@@ -25,7 +25,7 @@ struct User{
 struct Group{
     char *groupname;
     uint32_t groupID;
-    uint32_t *usersID;
+    int *usersID;
     int nrUsers;
 };
 
@@ -88,5 +88,4 @@ public:
 
     ssize_t readFile(const char* filename, char *data, size_t length, size_t offset = 0);
     ssize_t writeFile(const char* filename, const char *data, size_t length, size_t offset = 0);
-    bool execute(const char* filename);
 };

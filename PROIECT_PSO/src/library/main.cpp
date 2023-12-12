@@ -60,10 +60,13 @@ int main(){
     fsAPI->createUser("Ciocanul","idolu_la_femei",5);
 
     //fsAPI->deleteUser(3);
-    fsAPI->deleteUser(1);
+    //fsAPI->deleteUser(1);
 
     fsAPI->createGroup("root", 1);
-    //fsAPI->createGroup("slaves", 2);
+    fsAPI->createGroup("slaves", 2);
+
+    fsAPI->setUserGroup(2, 1);
+    fsAPI->setUserGroup(3, 1);
 
     fileSystemAPI::destroyInstance();
 

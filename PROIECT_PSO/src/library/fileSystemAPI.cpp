@@ -114,7 +114,7 @@ void fileSystemAPI::destroyInstance()
 
 bool fileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
 {
-    printf("Enter createUser()!\n");
+    //printf("Enter createUser()!\n");
 
     size_t index_user;
     bool isSpace = false;
@@ -173,9 +173,9 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
     users[index_user].permissions = 6;
     totalUsers++;
 
-    printf("S-a creat la index= %d: %s %s %d %d %d\n", index_user,users[index_user].username,users[index_user].password, users[index_user].userID, users[index_user].groupID, users[index_user].permissions);
+    //printf("S-a creat la index= %d: %s %s %d %d %d\n", index_user,users[index_user].username,users[index_user].password, users[index_user].userID, users[index_user].groupID, users[index_user].permissions);
 
-    printf("Exit create ok!\n");
+    //printf("Exit create ok!\n");
     return true;
 }
 
@@ -211,6 +211,10 @@ bool fileSystemAPI::deleteUser(uint32_t userID)
 
 bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 {
+    printf("Enter setUserGroup!\n");
+
+    bool hasChanged = false;
+
     //check if has space
     for(int i = 0; i < totalGroups; i ++){
         if(groups[i].groupID == groupID && groups[i].nrUsers == MAX_USERS){
@@ -234,22 +238,27 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
             //find the groupID
             for(int j = 0; j < totalGroups; j ++){
-
+                printf("totalGroups are %d and group %s\t%d\n", totalGroups, groups[j].groupname, groups[j].groupID);
+                
                 //delete user if exist in another group
                 for(int k = 0; k < groups[j].nrUsers; k ++){
+                    printf("totalUsers for %s are %d and users[%d]: %d\n", groups[j].groupname, groups[j].nrUsers, k, groups[j].usersID[k]);
                     if(groups[j].usersID[k] == userID && groups[j].groupID != groupID){
                         groups[j].usersID[k] == 0;
+                        groups[j].nrUsers --;
                     }
                 }
 
                 //change if exists and update the users from group
                 if(groups[j].groupID == groupID){
+                    printf("Inside to change user's group!\n");
                     users[i].groupID = groupID;
+
                     groups[j].usersID[groups[j].nrUsers] = userID;
                     groups[j].nrUsers ++;
 
                     printf("User= %d changed his group to= %d\n", userID, groupID);
-                    return true;
+                    hasChanged = true;
                 }
             }
 
@@ -257,6 +266,9 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
             return false;
         }
     }
+
+    if(hasChanged)
+        return true;
 
     fprintf(stderr, "User with ID= %d not found!\n", userID);
     return false;
@@ -276,7 +288,7 @@ bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     //check if already exists
     for(int i = 0; i < totalGroups; i ++){
         if(strncmp(groups[i].groupname, groupname, (strlen(groupname) + 1)) == 0){
-            fprintf(stderr,"Group with name= %s already exists!\n");
+            fprintf(stderr,"Group with name= %s already exists!\n", groupname);
             return false;
         }
 
@@ -303,7 +315,7 @@ bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
 
     //allocate
     groups[index].groupname = new char[strlen(groupname) + 1]{};
-    groups[index].usersID = new uint32_t[MAX_USERS]{};
+    groups[index].usersID = new int[MAX_USERS]{};
 
     memcpy(groups[index].groupname, groupname, strlen(groupname));
     groups[index].groupID = groupID;
@@ -453,15 +465,10 @@ ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t 
     return totalWrite;
 }
 
-bool fileSystemAPI::execute(const char *filename)
-{
-    return false;
-}
-
 void fileSystemAPI::readImportantFile(const char *filename)
 {
-    printf("\tEnter readImportantFile() with file= %s!\n", filename);
-    char *data, *token, *str;
+    //printf("\tEnter readImportantFile() with file= %s!\n", filename);
+    char *data, *token, *str, *internalToken;
     int index = 0;
     size_t inumber;
 
@@ -479,7 +486,7 @@ void fileSystemAPI::readImportantFile(const char *filename)
         return;
     }
 
-    printf("Fisierul %s este populat!\n", filename);
+    //printf("Fisierul %s este populat!\n", filename);
 
     //allocate for strtok in another string where I have permissions
     str = new char[Disk::BLOCK_SIZE + 1]{};
@@ -489,13 +496,13 @@ void fileSystemAPI::readImportantFile(const char *filename)
     seeTypeImportantFile(filename);
 
     //choose how to tokenize
-    if(isGroupsFile)
-        token = strtok(str, "\n");
-    else
+    if(!isGroupsFile)
         token = strtok(str, ":");
+    else
+        token = strtok_r(str, "\n", &internalToken);
 
     while(token != NULL){
-        printf("token at start= %s\n", token);
+        //printf("token at start= %s\n", token);
         //call specific function
         if(isUsersFile)
             readUsersFile(token, index);
@@ -506,15 +513,16 @@ void fileSystemAPI::readImportantFile(const char *filename)
         else if(isGroupsFile)
             readGroupsFile(token, index);
 
+        //printf("token before the end: %s\n", token);
         //go next
-        if(isGroupsFile)
-            token = strtok(NULL, ":\n");
-        else
+        if(!isGroupsFile)
             token = strtok(NULL, ":");
+        else
+            token = strtok_r(NULL, "\n", &internalToken);
 
         index ++;
 
-        printf("token at the end= %s\n", token);
+        //printf("token at the end= %s\n", token);
     }
 
     //set total
@@ -524,50 +532,59 @@ void fileSystemAPI::readImportantFile(const char *filename)
     else if(isGroupsFile)
         totalGroups = index;
 
-    for(int i = 0; i < totalUsers; i ++){
-        printf("S-a citit de la index= %d: %s %s %d %d %d\n", i,users[i].username,users[i].password, users[i].userID, users[i].groupID, users[i].permissions);
+    //for(int i = 0; i < totalUsers; i ++){
+        //printf("S-a citit userul de la index= %d: %s %s %d %d %d\n", i,users[i].username,users[i].password, users[i].userID, users[i].groupID, users[i].permissions);
+    //}
+
+    for(int i = 0; i < totalGroups; i ++){
+        printf("S-a citit grupul de la index= %d: %s %d\n", i, groups[i].groupname, groups[i].groupID);
+
+        for(int j = 0; j < groups[i].nrUsers; j ++){
+            printf(":%d", groups[i].usersID[j]);
+        }
+        printf("\n");
     }
 
     delete data;
 
-    printf("Exit readUsers ok!\n");
+    //printf("Exit readUsers ok!\n");
 }
 
 void fileSystemAPI::readUsersFile(const char *token, int index)
 {
     //read username 
-    printf("username= %s\t", token);
+    //printf("username= %s\t", token);
     users[index].username = new char[strlen(token) + 1]{};
     memcpy(users[index].username, token, strlen(token));
     token = strtok(NULL, ":");
 
     //ignore password
-    printf("password= %s\t", token);
+    //printf("password= %s\t", token);
     token = strtok(NULL, ":");
 
     //take userID
-    printf("userID= %s\t", token);
+    //printf("userID= %s\t", token);
     users[index].userID = atoi(token);
     token = strtok(NULL, ":");
 
     //take groupID
-    printf("groupID= %s\t", token);
+    //printf("groupID= %s\t", token);
     users[index].groupID = atoi(token);
     token = strtok(NULL, "\n");
 
     //take permissions
-    printf("permissions= %s\n", token);
+    //printf("permissions= %s\n", token);
     users[index].permissions = atoi(token);
 }
 
 void fileSystemAPI::readPassswordsFile(const char *token, int index)
 {
     //read username
-    printf("username= %s\t", token);
+    //printf("username= %s\t", token);
     token = strtok(NULL, "\n");
 
     //read password
-    printf("password= %s\n", token);
+    //printf("password= %s\n", token);
     users[index].password = new char[strlen(token) + 1]{};
     memcpy(users[index].password, token, strlen(token));
 }
@@ -576,43 +593,56 @@ void fileSystemAPI::readGroupsFile(const char *token, int index)
 {
     printf("Enter readGroupsFile!\n");
     char *str2, *token2;
+    bool hasUsers = false;
+    int countChar = 0;
 
-    //alloc
+    //search for users
+    for(int i = 0; i < strlen(token); i ++){
+        if(token[i] == ':')
+            countChar++;
+    }
+
+    if(countChar > 2)
+        hasUsers = true;
+
+    //alloc users in group
+    groups[index].usersID = new int[MAX_USERS]{};
+
+    //create a copy
     str2 = new char[strlen(token) + 1]{};
     memcpy(str2, token, strlen(token));
 
     printf("str2= %s\n", str2);
 
-    token2 = strtok(str2, ":");
-
-    printf("token2= %s\n", token2);
+    token2 = strtok(str2, ":\n");
 
     //read groupname
-    printf("groupname= %s\t", token2);
+    printf("groupname= %s\n", token2);
     groups[index].groupname = new char[strlen(token2) + 1]{};
-    token2 = strtok(NULL, ":");
-
-    //skip after x
-    token2 = strtok(NULL, ":");
-
-    //take groupID
-    printf("groupID= %s\t", token2);
-    groups[index].groupID = atoi(token2);
+    memcpy(groups[index].groupname, token2, strlen(token2));
     token2 = strtok(NULL, ":\n");
 
+    //skip after x
+    token2 = strtok(NULL, ":\n");
+
+    //take groupID
+    printf("groupID= %s\n", token2);
+    groups[index].groupID = atoi(token2);
+
     //check if has users
-    if(token2 == NULL){
+    if(!hasUsers){
         printf("Has no users!\n");
         return;
     }
     
+    token2 = strtok(NULL, ":\n");
     //read user by user
     while(token2 != NULL){
         printf(" user[%d]= %s\n",groups[index].nrUsers, token2);
         groups[index].usersID[groups[index].nrUsers] = atoi(token2);
         groups[index].nrUsers ++;
 
-        token2 = strtok(NULL, ":");
+        token2 = strtok(NULL, ":\n");
     }
 
     delete str2;
@@ -620,7 +650,7 @@ void fileSystemAPI::readGroupsFile(const char *token, int index)
 
 void fileSystemAPI::writeImportantFile(const char *filename)
 {
-    printf("Enter writeImportantFile() with file= %s!\n", filename);
+    //printf("Enter writeImportantFile() with file= %s!\n", filename);
 
     size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0, totalToRead;
     char *data, *line;
@@ -664,16 +694,16 @@ void fileSystemAPI::writeImportantFile(const char *filename)
 
     myFileSystem->fs_write(inumber, data, Disk::BLOCK_SIZE, 0);
 
-    printf("Data = \n%s", data);
+    //printf("Data = \n%s", data);
 
     delete data;
 
-    printf("Exit writeUsers ok!\n");
+    //printf("Exit writeUsers ok!\n");
 }
 
 void fileSystemAPI::writeUsersFile(char *line, size_t length, int i)
 {
-    printf("Enter writeUsersFile!\n");
+    //printf("Enter writeUsersFile!\n");
 
     if(users[i].userID != 0)
         snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
@@ -683,7 +713,7 @@ void fileSystemAPI::writeUsersFile(char *line, size_t length, int i)
 
 void fileSystemAPI::writePasswordsFile(char *line, size_t length, int i)
 {
-    printf("Enter writePasswordsFile!\n");
+    //printf("Enter writePasswordsFile!\n");
 
     if(users[i].userID != 0)
         snprintf(line, length, "%s:%s\n", users[i].username, users[i].password);
@@ -693,7 +723,7 @@ void fileSystemAPI::writePasswordsFile(char *line, size_t length, int i)
 
 void fileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
 {   
-    printf("Enter writeGroupsFile!\n");
+    //printf("Enter writeGroupsFile!\n");
 
     int totalWritten = 0;
 
@@ -703,8 +733,10 @@ void fileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
 
     //read every user from that group
     for(int j = 0; j < groups[i].nrUsers; j ++){
-        written = snprintf(line + totalWritten, length - totalWritten, ":%d", groups[i].usersID[j]);
-        totalWritten += written;
+        if(groups[i].usersID[j] != 0){
+            written = snprintf(line + totalWritten, length - totalWritten, ":%d", groups[i].usersID[j]);
+            totalWritten += written;
+        }
     }
 
     snprintf(line + totalWritten, length - totalWritten, "\n");
