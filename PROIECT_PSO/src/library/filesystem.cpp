@@ -356,11 +356,12 @@ Inode FileSystem::getInode(size_t inumber)
 size_t FileSystem::getInumber(const char *filename)
 {
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+    SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
 
     //get the inode of the filename
-    for(int i = 0; i < totalInodes ; i ++){
+    for(int i = 0; i < auxSuperBlock->Inodes; i ++){
 
-        if(strncmp(inodes[i].Filename, filename, (strlen(filename) + 1)) == 0){
+        if(inodes[i].Valid && strncmp(inodes[i].Filename, filename, (strlen(filename) + 1)) == 0){
             printf("I found file= %s at index= %d\n", filename, i);
             return i;
         }
