@@ -51,7 +51,7 @@ private:
     static Disk *mountedDisk;
     static size_t totalInodes;
 
-    static void debugInodes(char block); //pentru debbuging
+    static void debugInodes(char* inodeBlock); //pentru debbuging
     static size_t floorDiv(size_t a, size_t b);
     static size_t ceilDiv(size_t a, size_t b);
 
@@ -65,6 +65,8 @@ private:
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 
+    static size_t getInodeBlockFromInumber(size_t inumber);
+    //bool checkImportantFiles(const char *filename, size_t inumber);
     static bool initBitmap(const Inode* inodeBlock);
 public:
     FileSystem(Disk *disk);
@@ -78,8 +80,8 @@ public:
     size_t getInumber(const char *filename);
     Inode getInode(size_t inumber);
 
-    size_t create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
-    bool    remove(size_t inumber);
+    int create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
+    int    remove(size_t inumber);
     statDetails stat(size_t inumber);
 
     size_t fs_read(size_t inumber, char *data, size_t length, size_t offset);
