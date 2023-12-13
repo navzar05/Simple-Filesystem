@@ -3,7 +3,7 @@
 
 int main(){
     Disk *disk = new Disk();
-    disk->disk_open("./bin/file.txt", 20);
+    disk->disk_open("./bin/file.txt", 30);
     // char* block1 = new char[Disk::BLOCK_SIZE];
     // char buffer[1024] = { 0 };
     // FileSystem *fs = new FileSystem(disk);
@@ -53,22 +53,35 @@ int main(){
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance(disk, 30);
 
     fsAPI->createUser("root", "rtqgoqmvp123.", 1);
-    fsAPI->createUser("SefuThau", "euSuntsmecheru", 8);
-    fsAPI->createUser("SefuThau", "euSuntsmecheru", 4);
-    fsAPI->createUser("Ciocanul","idolu_la_femei",2);
-    fsAPI->createUser("Ionel","cuceritorul",3);
-    fsAPI->createUser("Ciocanul","idolu_la_femei",5);
-
-    //fsAPI->deleteUser(3);
-    //fsAPI->deleteUser(1);
-
     fsAPI->createGroup("root", 1);
-    fsAPI->createGroup("slaves", 2);
+    fsAPI->setUserGroup(1, 1);
 
-    fsAPI->setUserGroup(2, 1);
-    fsAPI->setUserGroup(3, 1);
+    fsAPI->setCurrentUser(1);
+
+    char data[] = "Hello everyone!\n";
+    fsAPI->writeFile("scrisoare.txt", data, strlen(data), 0);
+    fsAPI->writeFile("test.txt", data, strlen(data), 0);
+
+    char *data2;
+    data2 = new char[sizeof(data) + 1]{};
+
+    fsAPI->readFile("scrisoare.txt", data2, sizeof(data), 0);
+
+    fsAPI->createUser("Stefan Raileanu", "miaaMmaiua", 2);
+    fsAPI->createUser("Rzvy", "euSunt Rzvy", 3);
+    fsAPI->createUser("Fanelu", "fanetos", 4);
+
+    fsAPI->createGroup("tocilarii", 2);
+    fsAPI->setUserGroup(2,3);
+    fsAPI->setUserGroup(3,2);
+    fsAPI->setUserGroup(4,2);
+    fsAPI->setUserGroup(2,2);
+
+    fsAPI->deleteUser(2);
 
     fileSystemAPI::destroyInstance();
+
+    printf("Final data: %s", data2);
 
     //*/
 

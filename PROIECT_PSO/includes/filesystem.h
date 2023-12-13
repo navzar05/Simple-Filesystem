@@ -65,7 +65,6 @@ private:
     static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 
-    bool checkImportantFiles(const char *filename, size_t inumber);
     static bool initBitmap(const Inode* inodeBlock);
 public:
     FileSystem(Disk *disk);
