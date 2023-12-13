@@ -3,8 +3,8 @@
 fileSystemAPI *fileSystemAPI::instance = nullptr;
 User *fileSystemAPI::users = nullptr;
 FileSystem *fileSystemAPI::myFileSystem = nullptr;
-Disk *fileSystemAPI::disk = nullptr;
 Group *fileSystemAPI::groups = nullptr;
+Disk *fileSystemAPI::disk = nullptr;
 
 size_t fileSystemAPI::totalUsers = 0;
 size_t fileSystemAPI::totalGroups = 0;
@@ -22,21 +22,18 @@ fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
     this->users = new User[MAX_USERS]{};
     this->groups = new Group[MAX_GROUPS]{};
     this->disk = disk_path;
-    disk_path->blocks = disk_blocks;
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
 
-    int ret = myFileSystem->mount(fileSystemAPI::disk);
+    mountFileSystem();
 
-    //printf("Ret: %d\n", ret);
+    formatFileSystem();
 
-    if (ret != 0) {
-        formatFileSystem();
-        createFile(USERS_FILE, 1, 1, 0644);
-        createFile(PASSWORDS_FILE, 1, 1, 0644);
-        createFile(GROUPS_FILE, 1, 1, 0644);
-    }
+    createFile(USERS_FILE, 1, 1, 0644);
+    createFile(PASSWORDS_FILE, 1, 1, 0644);
+    createFile(GROUPS_FILE, 1, 1, 0644);
+   
 
     readImportantFile(USERS_FILE);
     readImportantFile(PASSWORDS_FILE);
@@ -51,24 +48,29 @@ fileSystemAPI::~fileSystemAPI()
     writeImportantFile(GROUPS_FILE);
 
     unmountFileSystem();
-    //delete this->users;
-   // delete this->myFileSystem;
+    delete this->users;
+    delete this->groups;
+    //delete this->myFileSystem;
 }
 
 bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 {
+    //printf("Enter has permissions for filename= %s with permissions= %o and current user is username= %s with ID= %d, with permissions= %o!\n", filename, mode, users[currentUser].username, users[currentUser].userID, users[currentUser].permissions);
     size_t inumber = myFileSystem->getInumber(filename);
     Inode inode = myFileSystem->getInode(inumber);
     uint32_t tmp;
     uint32_t mask;
+    uint32_t userRights;
 
+    //printf("Have inode with filename= %s and and userId= %d and permissions= %o\n", inode.Filename, inode.OwnerUserID, inode.Permissions);
+    
     //is the owner
     if(inode.OwnerUserID == users[currentUser].userID){
 
         //select owner permissions
         mask = 0700;
         tmp = (mask & inode.Permissions);
-
+        tmp = (tmp >> 6);
     }
 
     //has the same group
@@ -77,6 +79,7 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         // select group permissions
         mask = 0070;
         tmp = (mask & inode.Permissions);
+        tmp = (tmp >> 3);
     }
 
     //none of them
@@ -87,10 +90,15 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         tmp = (mask & inode.Permissions);
     }
 
+    //select from current user his rights
+    userRights = (users[currentUser].permissions & mode);
+    //printf("check permissions tmp= %o  userRights= %o  mode= %o\n", tmp, userRights, mode);
+
     //has  permission for mode
-    if((tmp & mode) == mode)
+    if((tmp & userRights) == mode)
         return true;
 
+    fprintf(stderr, "No acess rights!\n");
     return false;
 }
 
@@ -114,7 +122,7 @@ void fileSystemAPI::destroyInstance()
 
 bool fileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
 {
-    //printf("Enter createUser()!\n");
+    printf("Enter createUser()\n");
 
     size_t index_user;
     bool isSpace = false;
@@ -140,7 +148,12 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
 
         //compare
         if(strncmp(users[i].username, username, strlen(username) + 1) == 0){
-            fprintf(stderr, "User %s already exist!\n", username);
+            fprintf(stderr, "User with username= %s already exists!\n", username);
+            return false;
+        }
+
+        else if(users[i].userID == userID){
+            fprintf(stderr, "User with ID=%d already exists!\n", userID);
             return false;
         }
     }
@@ -170,7 +183,7 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
     //set userID, groupID and permissons
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
-    users[index_user].permissions = 6;
+    users[index_user].permissions = 06;
     totalUsers++;
 
     //printf("S-a creat la index= %d: %s %s %d %d %d\n", index_user,users[index_user].username,users[index_user].password, users[index_user].userID, users[index_user].groupID, users[index_user].permissions);
@@ -181,16 +194,20 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
 
 bool fileSystemAPI::deleteUser(uint32_t userID)
 {
-    //printf("Enter delete!\n");
+    printf("Enter deleteUser() user\n");
     //check if user exist
     for(int i = 0; i < totalUsers; i++){
         if(users[i].userID == userID){
-
+            printf("We delete user= %s\n", users[i].username);
             //reset if exists in a group
             for(int j = 0; j < totalGroups; j ++){
+                printf("Group= %s has users:\n", groups[j].groupname);
                 for(int k = 0; k < groups[j].nrUsers; k ++){
-                    if(groups[j].usersID[k] == userID)
+                    printf("users[%d]= %d\n", k, groups[j].usersID[k]);
+                    if(groups[j].usersID[k] == userID){
                         groups[j].usersID[k] = 0;
+                        printf("User= %s before delete was in group= %s\n", users[i].username, groups[j].groupname);    
+                    }
                 }
             }
 
@@ -211,20 +228,29 @@ bool fileSystemAPI::deleteUser(uint32_t userID)
 
 bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 {
-    printf("Enter setUserGroup!\n");
+    printf("Enter setUserGroup()\n");
 
-    bool hasChanged = false;
+    bool hasChanged = false, findGroup = false;
 
     //check if has space
     for(int i = 0; i < totalGroups; i ++){
+
         if(groups[i].groupID == groupID && groups[i].nrUsers == MAX_USERS){
             fprintf(stderr, "No more space for another user in group= %s\n", groups[i].groupname);
             return false;
         }
+        else if(groups[i].groupID == groupID)
+                findGroup = true;
+    }
+
+    if(!findGroup){
+        fprintf(stderr, "Group with ID= %d not found!\n", groupID);
+        return false;
     }
 
     //find the user
     for(int i = 0; i < totalUsers; i ++){
+
         if(users[i].userID == userID){
 
             //check if already has the groupID desired
@@ -238,11 +264,10 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
             //find the groupID
             for(int j = 0; j < totalGroups; j ++){
-                printf("totalGroups are %d and group %s\t%d\n", totalGroups, groups[j].groupname, groups[j].groupID);
                 
                 //delete user if exist in another group
                 for(int k = 0; k < groups[j].nrUsers; k ++){
-                    printf("totalUsers for %s are %d and users[%d]: %d\n", groups[j].groupname, groups[j].nrUsers, k, groups[j].usersID[k]);
+                    
                     if(groups[j].usersID[k] == userID && groups[j].groupID != groupID){
                         groups[j].usersID[k] == 0;
                         groups[j].nrUsers --;
@@ -251,19 +276,14 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
                 //change if exists and update the users from group
                 if(groups[j].groupID == groupID){
-                    printf("Inside to change user's group!\n");
                     users[i].groupID = groupID;
 
                     groups[j].usersID[groups[j].nrUsers] = userID;
                     groups[j].nrUsers ++;
 
-                    printf("User= %d changed his group to= %d\n", userID, groupID);
                     hasChanged = true;
                 }
             }
-
-            fprintf(stderr, "Group with ID= %d not found!\n", groupID);
-            return false;
         }
     }
 
@@ -276,6 +296,7 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
 bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
 {   
+    printf("Enter createGroup()\n");
     size_t index;
     bool isSpace = false;
 
@@ -322,13 +343,14 @@ bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     groups[index].nrUsers = 0;
     totalGroups++;
 
-    printf("Group with name= %s and ID= %d created!\n", groups[index].groupname, groups[index].groupID);
+    //printf("Group with name= %s and ID= %d created!\n", groups[index].groupname, groups[index].groupID);
 
     return true;
 }
 
 bool fileSystemAPI::deleteGroup(uint32_t groupID)
 {
+    printf("Enter deleteGroup()\n");
     for(int i = 0; i < totalGroups; i ++){
         if(groups[i].groupID == groupID){
             
@@ -360,14 +382,15 @@ bool fileSystemAPI::setFilePermissions(const char *filename, uint32_t permission
     if(inumber == -1)
         return false;
 
-    Inode inodes = myFileSystem->getInode(inumber);
+    Inode inode = myFileSystem->getInode(inumber);
 
     //only the owner can change the permissions
-    if(users[currentUser].userID == inodes.OwnerUserID){
-        inodes.Permissions = permissions;
+    if(users[currentUser].userID == inode.OwnerUserID){
+        inode.Permissions = permissions;
         return true;
     }
 
+    fprintf(stderr, "User with id= %d doesn't have permissions for file= %s \n", users[currentUser].userID, inode.Filename);
     return false;
 }
 
@@ -396,6 +419,7 @@ bool fileSystemAPI::formatFileSystem()
 
 ssize_t fileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions)
 {
+    printf("enter createFile()!\n");
     size_t ret;
 
     ret = myFileSystem->create(filename, ownerUserID, ownerGroupID, permissions);
@@ -424,6 +448,7 @@ statDetails fileSystemAPI::getFileStat(const char *filename)
 
 ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length, size_t offset)
 {
+    printf("Enter readFile()\n");
     size_t inumber = myFileSystem->getInumber(filename);
 
     //file doesn't exist
@@ -433,18 +458,18 @@ ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length,
     size_t totalRead;
     Inode inode = myFileSystem->getInode(inumber);
 
-    //handle the allocation of data
-    data = new char[length + 1]{};
-
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
         totalRead = myFileSystem->fs_read(inumber, data, length, offset);
+
+    printf("totalRead= %d and data is: %s", totalRead, data);
 
     return totalRead;
 }
 
 ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t length, size_t offset)
 {
+    printf("Enter writeFile()\n");
     size_t totalWrite = 0, inumber;
     Inode inode;
 
@@ -452,11 +477,8 @@ ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t 
 
     //create if doesn't exist
     if(inumber == -1){
-        createFile(filename, users[currentUser].userID, users[currentUser].groupID, 0644);
-        inumber = myFileSystem->getInumber(filename);
+        inumber = createFile(filename, users[currentUser].userID, users[currentUser].groupID, 0644);
     }
-
-    inode = myFileSystem->getInode(inumber);
 
     //write if has the permissions
     if(hasPermissions(filename, WRITE_PERMISSION))
@@ -478,7 +500,7 @@ void fileSystemAPI::readImportantFile(const char *filename)
     inumber = myFileSystem->getInumber(filename);
     myFileSystem->fs_read(inumber, data, Disk::BLOCK_SIZE, 0);
 
-    printf("\tData with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
+    //printf("\tData with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
 
     //check if is populate
     if(data[0] == '\0'){
@@ -537,10 +559,10 @@ void fileSystemAPI::readImportantFile(const char *filename)
     //}
 
     for(int i = 0; i < totalGroups; i ++){
-        printf("S-a citit grupul de la index= %d: %s %d\n", i, groups[i].groupname, groups[i].groupID);
+        //printf("S-a citit grupul de la index= %d: %s %d\n", i, groups[i].groupname, groups[i].groupID);
 
         for(int j = 0; j < groups[i].nrUsers; j ++){
-            printf(":%d", groups[i].usersID[j]);
+            //printf(":%d", groups[i].usersID[j]);
         }
         printf("\n");
     }
@@ -636,6 +658,7 @@ void fileSystemAPI::readGroupsFile(const char *token, int index)
     }
     
     token2 = strtok(NULL, ":\n");
+
     //read user by user
     while(token2 != NULL){
         printf(" user[%d]= %s\n",groups[index].nrUsers, token2);
@@ -669,7 +692,7 @@ void fileSystemAPI::writeImportantFile(const char *filename)
     else
         totalToRead = totalUsers;
 
-    printf("Have totalGroups= %d\n", totalGroups);
+    //printf("Have totalGroups= %d\n", totalGroups);
 
     //write in line
     for(int i = 0; i < totalToRead; i ++){
@@ -758,3 +781,15 @@ void fileSystemAPI::seeTypeImportantFile(const char *filename)
         isGroupsFile = true;
 }
 
+bool fileSystemAPI::setCurrentUser(uint32_t userID)
+{
+    for(int i = 0; i < totalUsers; i ++){
+        if(users[i].userID == userID){
+            currentUser = i;
+            return true;
+        }
+    }
+
+    fprintf(stderr, "User with ID= %d doesn't exist!\n");
+    return false;
+}

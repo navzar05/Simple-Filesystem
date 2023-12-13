@@ -1,10 +1,8 @@
 #include "../../includes/disk_driver.h"
+#include "disk_driver.h"
 
 size_t Disk::BLOCK_SIZE = 0;
 
-Disk::~Disk(){
-    close(this->descriptor);
-}
 
 void Disk::disk_open(const char *path, size_t nblocks, size_t block_size)
 {

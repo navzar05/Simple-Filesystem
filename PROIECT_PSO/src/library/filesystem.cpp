@@ -173,7 +173,7 @@ FileSystem::FileSystem(Disk *disk)
     this->POINTERS_PER_BLOCK = disk->BLOCK_SIZE / 4;
 
     this->superBlock = new char[Disk::BLOCK_SIZE]{};
-    this->totalInodes=FileSystem::ceilDiv(disk->blocks, 10) * Disk::BLOCK_SIZE;
+    this->totalInodes = FileSystem::ceilDiv(disk->blocks, 10) * Disk::BLOCK_SIZE;
     this->inodeBlocks = new char[this->totalInodes]{};
 }
 
@@ -332,11 +332,12 @@ Inode FileSystem::getInode(size_t inumber)
 size_t FileSystem::getInumber(const char *filename)
 {
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+    SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
 
     //get the inode of the filename
-    for(int i = 0; i < totalInodes ; i ++){
-
-        if(strncmp(inodes[i].Filename, filename, (strlen(filename) + 1)) == 0){
+    for(int i = 0; i < auxSuperBlock->Inodes; i ++){
+        
+        if(inodes[i].Valid && strncmp(inodes[i].Filename, filename, (strlen(filename) + 1)) == 0){
             printf("I found file= %s at index= %d\n", filename, i);
             return i;
         }
@@ -436,6 +437,9 @@ bool FileSystem::remove(size_t inumber)
     inodes[inumber].OwnerGroupID = 0;
     inodes[inumber].OwnerUserID = 0;
     inodes[inumber].Size = 0;
+
+    //set filename to zero
+    memset(inodes[inumber].Filename, '\0', MAX_FILENAME_LENGTH);
 
     return true;
 }

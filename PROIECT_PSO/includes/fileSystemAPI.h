@@ -11,8 +11,8 @@
 #define PASSWORD_LENGTH 20
 #define GROUP_LENGTH 20
 
-#define WRITE_PERMISSION 4
-#define READ_PERMISSION 6
+#define WRITE_PERMISSION 02
+#define READ_PERMISSION  04
 
 struct User{
     char *username;
@@ -38,8 +38,8 @@ private:
     static fileSystemAPI *instance;
     static User *users;
     static FileSystem *myFileSystem;
-    static Disk *disk;
     static Group *groups;
+    static Disk *disk;
 
     static size_t totalUsers;
     static size_t totalGroups;
@@ -63,6 +63,7 @@ private:
     void writeGroupsFile(char *line, size_t length, int i);
 
     void seeTypeImportantFile(const char *filename);
+    
 
 public:
     static fileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
@@ -81,6 +82,8 @@ public:
     bool mountFileSystem();
     bool unmountFileSystem();
     bool formatFileSystem();
+
+    bool setCurrentUser(uint32_t userID);
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
