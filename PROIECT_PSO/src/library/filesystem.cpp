@@ -167,8 +167,6 @@ size_t FileSystem::getInodeBlockFromInumber(size_t inumber)
 bool FileSystem::initBitmap(const Inode* inodeBlock)
 {
 
-    // DE REMEDIAT BITMAP VA OCUPA TOT SPATIUL PENTRU SIMPLITAT
-
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(FileSystem::superBlock);
 
     FileSystem::bitmap = new bool[auxSuperBlock->Blocks];
