@@ -88,6 +88,7 @@ public:
     bool setCurrentUser(uint32_t userID);
     uint32_t setUserID();
     uint32_t setGroupID();
+    bool checkCredentials(const char *username, const char *password);
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
