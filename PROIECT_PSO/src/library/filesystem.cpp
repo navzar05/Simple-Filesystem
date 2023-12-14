@@ -84,7 +84,7 @@ bool FileSystem::loadIndirectPages(char *start, size_t inumber, Inode *inodeBloc
     for (int j = start_blk; j <= end_blk; j ++, block_index++) {
         memset(auxBlockRead, 0, Disk::BLOCK_SIZE);
         if (pointers[j] != 0) {
-            mountedDisk->so_read(inodeBlocks[inumber].Direct[j], auxBlockRead, Disk::BLOCK_SIZE);
+            mountedDisk->so_read(pointers[j], auxBlockRead, Disk::BLOCK_SIZE);
             memcpy(start + block_index * Disk::BLOCK_SIZE, auxBlockRead, Disk::BLOCK_SIZE);
         } else {
             FileSystem::allocBlock(&pointers[j]);
@@ -273,6 +273,9 @@ bool FileSystem::format(Disk *disk)
 
     disk->so_write(0, superBlock, Disk::BLOCK_SIZE);
     FileSystem::mountedDisk = disk;
+
+    FileSystem::initBitmap(reinterpret_cast<Inode*>(FileSystem::inodeBlocks));
+
     disk->mounted = 1;
 
     printf("Disk formated\n");
@@ -283,18 +286,18 @@ bool FileSystem::mount(Disk *disk)
 {
     if (disk->mounted) {
         fprintf(stderr, "A file system already mounted.\n");
-        return 1;
+        return false;
     }
     if (disk->so_read(0, superBlock, Disk::BLOCK_SIZE) < 0) {
         fprintf(stderr, "Error on reading superblock.\n");
-        return 1;
+        return false;
     }
 
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
 
     if (auxSuperBlock->MagicNumber != MAGIC_NUMBER) {
         fprintf(stderr, "Disk is not formated. Bad magic number: it is %d not %d.\n", auxSuperBlock->MagicNumber, MAGIC_NUMBER);
-        return 1;
+        return false;
     }
 
     printf("Mounting...\n");
@@ -316,7 +319,7 @@ bool FileSystem::mount(Disk *disk)
 
     printf("Filesystem mounted.\n");
 
-    return 0;
+    return true;
 }
 
 bool FileSystem::unmount(Disk *disk)
@@ -488,7 +491,6 @@ statDetails FileSystem::stat(size_t inumber){
     return inodeDetails;
 }
 
-//Doar pentru length corect
 size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)
 {
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);
