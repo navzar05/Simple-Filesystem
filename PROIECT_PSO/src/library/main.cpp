@@ -1,7 +1,7 @@
 /* #include "../../includes/disk_driver.h" */
 #include "../../includes/shellProgram.h"
 
-#define BLOCKS 30
+#define BLOCKS 100
 
 int main(){
     Disk *disk = new Disk();
@@ -9,7 +9,9 @@ int main(){
 
     ShellProgram *myShell = ShellProgram::getInstance(disk, BLOCKS);
 
-    
+    myShell->run();
+
+    ShellProgram::destroyInstance();
 
     /*
     char* block1 = new char[Disk::BLOCK_SIZE];
