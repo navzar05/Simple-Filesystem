@@ -1,73 +1,74 @@
 #include "../../includes/fileSystemAPI.h"
+#include "fileSystemAPI.h"
 
-fileSystemAPI *fileSystemAPI::instance = nullptr;
-User *fileSystemAPI::users = nullptr;
-FileSystem *fileSystemAPI::myFileSystem = nullptr;
-Group *fileSystemAPI::groups = nullptr;
-Disk *fileSystemAPI::disk = nullptr;
+FileSystemAPI *FileSystemAPI::instance = nullptr;
+User *FileSystemAPI::users = nullptr;
+FileSystem *FileSystemAPI::myFileSystem = nullptr;
+Group *FileSystemAPI::groups = nullptr;
+Disk *FileSystemAPI::disk = nullptr;
 
-size_t fileSystemAPI::totalUsers = 0;
-size_t fileSystemAPI::totalGroups = 0;
-size_t fileSystemAPI::diskBlocks = 0;
-size_t fileSystemAPI::currentUser = 0;
+size_t FileSystemAPI::totalUsers = 0;
+size_t FileSystemAPI::totalGroups = 0;
+size_t FileSystemAPI::diskBlocks = 0;
+size_t FileSystemAPI::currentUser = 0;
 
-bool fileSystemAPI::isUsersFile = false;
-bool fileSystemAPI::isPasswordsFile = false;
-bool fileSystemAPI::isGroupsFile = false;
+bool FileSystemAPI::isUsersFile = false;
+bool FileSystemAPI::isPasswordsFile = false;
+bool FileSystemAPI::isGroupsFile = false;
+bool *FileSystemAPI::bitmap = nullptr;
 
-fileSystemAPI::fileSystemAPI(Disk *disk_path, size_t disk_blocks)
+FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
-    //initialize variables0
+    //initialize variables
     this->diskBlocks = disk_blocks;
     this->users = new User[MAX_USERS]{};
     this->groups = new Group[MAX_GROUPS]{};
     this->disk = disk_path;
+    this->bitmap = new bool[MAX_USERS]{};
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
 
-    mountFileSystem();
+    //format if is not mounted
+    if(!mountFileSystem())
+        formatFileSystem();
 
-    formatFileSystem();
-
+    //create imporant files
     createFile(USERS_FILE, 1, 1, 0644);
     createFile(PASSWORDS_FILE, 1, 1, 0644);
     createFile(GROUPS_FILE, 1, 1, 0644);
    
-
+    //read if was data before start the File System
     readImportantFile(USERS_FILE);
     readImportantFile(PASSWORDS_FILE);
     readImportantFile(GROUPS_FILE);
 }
 
-fileSystemAPI::~fileSystemAPI()
+FileSystemAPI::~FileSystemAPI()
 {
     //write in important files
     writeImportantFile(USERS_FILE);
     writeImportantFile(PASSWORDS_FILE);
     writeImportantFile(GROUPS_FILE);
 
+    //unmount and delete
     unmountFileSystem();
-    delete this->users;
-    delete this->groups;
+    delete[] this->users;
+    delete[] this->groups;
+    delete[] this->bitmap;
     //delete this->myFileSystem;
 }
 
-bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
+bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 {
-    //printf("Enter has permissions for filename= %s with permissions= %o and current user is username= %s with ID= %d, with permissions= %o!\n", filename, mode, users[currentUser].username, users[currentUser].userID, users[currentUser].permissions);
     size_t inumber = myFileSystem->getInumber(filename);
     Inode inode = myFileSystem->getInode(inumber);
-    uint32_t tmp;
-    uint32_t mask;
-    uint32_t userRights;
+    uint32_t tmp, mask, userRights;
 
-    //printf("Have inode with filename= %s and and userId= %d and permissions= %o\n", inode.Filename, inode.OwnerUserID, inode.Permissions);
-    
     //is the owner
     if(inode.OwnerUserID == users[currentUser].userID){
 
-        //select owner permissions
+        //select owner permissions and shift 6 bytes
         mask = 0700;
         tmp = (mask & inode.Permissions);
         tmp = (tmp >> 6);
@@ -76,7 +77,7 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     //has the same group
     else if(inode.OwnerGroupID == users[currentUser].groupID){
 
-        // select group permissions
+        // select group permissions and shif 3 bytes
         mask = 0070;
         tmp = (mask & inode.Permissions);
         tmp = (tmp >> 3);
@@ -92,26 +93,25 @@ bool fileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 
     //select from current user his rights
     userRights = (users[currentUser].permissions & mode);
-    //printf("check permissions tmp= %o  userRights= %o  mode= %o\n", tmp, userRights, mode);
 
     //has  permission for mode
     if((tmp & userRights) == mode)
         return true;
 
-    fprintf(stderr, "No acess rights!\n");
+    fprintf(stderr, "User= %s has can't do mode= %d on file= %s\n", users[currentUser].username, mode, filename);
     return false;
 }
 
-fileSystemAPI *fileSystemAPI::getInstance(Disk *disk_path, size_t disk_blocks)
+FileSystemAPI *FileSystemAPI::getInstance(Disk *disk_path, size_t disk_blocks)
 {
     //create instance if doesn't exist
     if(!instance)
-        instance = new fileSystemAPI(disk_path, disk_blocks);
+        instance = new FileSystemAPI(disk_path, disk_blocks);
 
     return instance;
 }
 
-void fileSystemAPI::destroyInstance()
+void FileSystemAPI::destroyInstance()
 {
     //destroy instance if exists
     if(instance){
@@ -120,10 +120,8 @@ void fileSystemAPI::destroyInstance()
     }
 }
 
-bool fileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
+bool FileSystemAPI::createUser(const char *username, const char *password, uint32_t userID)
 {
-    printf("Enter createUser()\n");
-
     size_t index_user;
     bool isSpace = false;
 
@@ -167,6 +165,7 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
         }
     }
 
+    //no space
     if(!isSpace){
         fprintf(stderr, "Maximum size at users reached!\n");
         return false;
@@ -180,44 +179,40 @@ bool fileSystemAPI::createUser(const char *username, const char *password, uint3
     memcpy(users[index_user].username, username, strlen(username));
     memcpy(users[index_user].password, password, strlen(password));
 
-    //set userID, groupID and permissons
+    //set userID, groupID and permissons and bitmap
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
     users[index_user].permissions = 06;
+    bitmap[index_user] = true;
     totalUsers++;
 
-    //printf("S-a creat la index= %d: %s %s %d %d %d\n", index_user,users[index_user].username,users[index_user].password, users[index_user].userID, users[index_user].groupID, users[index_user].permissions);
-
-    //printf("Exit create ok!\n");
     return true;
 }
 
-bool fileSystemAPI::deleteUser(uint32_t userID)
+bool FileSystemAPI::deleteUser(uint32_t userID)
 {
-    printf("Enter deleteUser() user\n");
     //check if user exist
     for(int i = 0; i < totalUsers; i++){
+
         if(users[i].userID == userID){
-            printf("We delete user= %s\n", users[i].username);
+
             //reset if exists in a group
             for(int j = 0; j < totalGroups; j ++){
-                printf("Group= %s has users:\n", groups[j].groupname);
                 for(int k = 0; k < groups[j].nrUsers; k ++){
-                    printf("users[%d]= %d\n", k, groups[j].usersID[k]);
                     if(groups[j].usersID[k] == userID){
-                        groups[j].usersID[k] = 0;
-                        printf("User= %s before delete was in group= %s\n", users[i].username, groups[j].groupname);    
+                        groups[j].usersID[k] = 0;   
                     }
                 }
             }
 
+            //free memory
             delete users[i].username;
             delete users[i].password;
             users[i].userID = 0;
             users[i].groupID = 0;
             users[i].permissions = 0;
+            bitmap[i] = false;
 
-            printf("Exit delete ok!\n");
             return true;
         }
     }
@@ -226,7 +221,7 @@ bool fileSystemAPI::deleteUser(uint32_t userID)
     return false;
 }
 
-bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
+bool FileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 {
     printf("Enter setUserGroup()\n");
 
@@ -294,7 +289,7 @@ bool fileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
     return false;
 }
 
-bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
+bool FileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
 {   
     printf("Enter createGroup()\n");
     size_t index;
@@ -343,15 +338,14 @@ bool fileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     groups[index].nrUsers = 0;
     totalGroups++;
 
-    //printf("Group with name= %s and ID= %d created!\n", groups[index].groupname, groups[index].groupID);
-
     return true;
 }
 
-bool fileSystemAPI::deleteGroup(uint32_t groupID)
+bool FileSystemAPI::deleteGroup(uint32_t groupID)
 {
     printf("Enter deleteGroup()\n");
     for(int i = 0; i < totalGroups; i ++){
+
         if(groups[i].groupID == groupID){
             
             //reset groupID if exists in a user to 0
@@ -375,7 +369,7 @@ bool fileSystemAPI::deleteGroup(uint32_t groupID)
     return false;
 }
 
-bool fileSystemAPI::setFilePermissions(const char *filename, uint32_t permissions)
+bool FileSystemAPI::setFilePermissions(const char *filename, uint32_t permissions)
 {
     size_t inumber = myFileSystem->getInumber(filename);
 
@@ -394,7 +388,7 @@ bool fileSystemAPI::setFilePermissions(const char *filename, uint32_t permission
     return false;
 }
 
-uint32_t fileSystemAPI::getFilePermissions(const char *filename)
+uint32_t FileSystemAPI::getFilePermissions(const char *filename)
 {
     size_t inumber = myFileSystem->getInumber(filename);
     Inode inode = myFileSystem->getInode(inumber);
@@ -402,24 +396,24 @@ uint32_t fileSystemAPI::getFilePermissions(const char *filename)
     return inode.Permissions;
 }
 
-bool fileSystemAPI::mountFileSystem()
+bool FileSystemAPI::mountFileSystem()
 {
     return myFileSystem->mount(disk);
 }
 
-bool fileSystemAPI::unmountFileSystem()
+bool FileSystemAPI::unmountFileSystem()
 {
     return myFileSystem->unmount(disk);
 }
 
-bool fileSystemAPI::formatFileSystem()
+bool FileSystemAPI::formatFileSystem()
 {
     return myFileSystem->format(disk);
 }
 
-ssize_t fileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions)
+ssize_t FileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions)
 {
-    printf("enter createFile()!\n");
+    printf("Enter createFile()!\n");
     size_t ret;
 
     ret = myFileSystem->create(filename, ownerUserID, ownerGroupID, permissions);
@@ -427,7 +421,7 @@ ssize_t fileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, ui
     return ret;
 }
 
-bool fileSystemAPI::removeFile(const char *filename)
+bool FileSystemAPI::removeFile(const char *filename)
 {
     size_t inumber = myFileSystem->getInumber(filename);
 
@@ -437,7 +431,7 @@ bool fileSystemAPI::removeFile(const char *filename)
     return myFileSystem->remove(inumber);
 }
 
-statDetails fileSystemAPI::getFileStat(const char *filename)
+statDetails FileSystemAPI::getFileStat(const char *filename)
 {
     size_t inumber = myFileSystem->getInumber(filename);
 
@@ -446,7 +440,7 @@ statDetails fileSystemAPI::getFileStat(const char *filename)
     return stats;
 }
 
-ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length, size_t offset)
+ssize_t FileSystemAPI::readFile(const char *filename, char *data, size_t length, size_t offset)
 {
     printf("Enter readFile()\n");
     size_t inumber = myFileSystem->getInumber(filename);
@@ -467,7 +461,7 @@ ssize_t fileSystemAPI::readFile(const char *filename, char *data, size_t length,
     return totalRead;
 }
 
-ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t length, size_t offset)
+ssize_t FileSystemAPI::writeFile(const char *filename, const char *data, size_t length, size_t offset)
 {
     printf("Enter writeFile()\n");
     size_t totalWrite = 0, inumber;
@@ -480,16 +474,15 @@ ssize_t fileSystemAPI::writeFile(const char *filename, const char *data, size_t 
         inumber = createFile(filename, users[currentUser].userID, users[currentUser].groupID, 0644);
     }
 
-    //write if has the permissions
+    //write if has permissions
     if(hasPermissions(filename, WRITE_PERMISSION))
         totalWrite = myFileSystem->fs_write(inumber, data, length, offset);
 
     return totalWrite;
 }
 
-void fileSystemAPI::readImportantFile(const char *filename)
+void FileSystemAPI::readImportantFile(const char *filename)
 {
-    //printf("\tEnter readImportantFile() with file= %s!\n", filename);
     char *data, *token, *str, *internalToken;
     int index = 0;
     size_t inumber;
@@ -500,15 +493,11 @@ void fileSystemAPI::readImportantFile(const char *filename)
     inumber = myFileSystem->getInumber(filename);
     myFileSystem->fs_read(inumber, data, Disk::BLOCK_SIZE, 0);
 
-    //printf("\tData with length= %d data= %s\n", Disk::BLOCK_SIZE, data);
-
     //check if is populate
     if(data[0] == '\0'){
         fprintf(stderr, "\tFisierul %s nu este populat!\n", filename);
         return;
     }
-
-    //printf("Fisierul %s este populat!\n", filename);
 
     //allocate for strtok in another string where I have permissions
     str = new char[Disk::BLOCK_SIZE + 1]{};
@@ -524,7 +513,7 @@ void fileSystemAPI::readImportantFile(const char *filename)
         token = strtok_r(str, "\n", &internalToken);
 
     while(token != NULL){
-        //printf("token at start= %s\n", token);
+
         //call specific function
         if(isUsersFile)
             readUsersFile(token, index);
@@ -535,7 +524,6 @@ void fileSystemAPI::readImportantFile(const char *filename)
         else if(isGroupsFile)
             readGroupsFile(token, index);
 
-        //printf("token before the end: %s\n", token);
         //go next
         if(!isGroupsFile)
             token = strtok(NULL, ":");
@@ -543,8 +531,6 @@ void fileSystemAPI::readImportantFile(const char *filename)
             token = strtok_r(NULL, "\n", &internalToken);
 
         index ++;
-
-        //printf("token at the end= %s\n", token);
     }
 
     //set total
@@ -572,46 +558,39 @@ void fileSystemAPI::readImportantFile(const char *filename)
     //printf("Exit readUsers ok!\n");
 }
 
-void fileSystemAPI::readUsersFile(const char *token, int index)
+void FileSystemAPI::readUsersFile(const char *token, int index)
 {
     //read username 
-    //printf("username= %s\t", token);
     users[index].username = new char[strlen(token) + 1]{};
     memcpy(users[index].username, token, strlen(token));
     token = strtok(NULL, ":");
 
     //ignore password
-    //printf("password= %s\t", token);
     token = strtok(NULL, ":");
 
     //take userID
-    //printf("userID= %s\t", token);
     users[index].userID = atoi(token);
     token = strtok(NULL, ":");
 
     //take groupID
-    //printf("groupID= %s\t", token);
     users[index].groupID = atoi(token);
     token = strtok(NULL, "\n");
 
     //take permissions
-    //printf("permissions= %s\n", token);
     users[index].permissions = atoi(token);
 }
 
-void fileSystemAPI::readPassswordsFile(const char *token, int index)
+void FileSystemAPI::readPassswordsFile(const char *token, int index)
 {
     //read username
-    //printf("username= %s\t", token);
     token = strtok(NULL, "\n");
 
     //read password
-    //printf("password= %s\n", token);
     users[index].password = new char[strlen(token) + 1]{};
     memcpy(users[index].password, token, strlen(token));
 }
 
-void fileSystemAPI::readGroupsFile(const char *token, int index)
+void FileSystemAPI::readGroupsFile(const char *token, int index)
 {
     printf("Enter readGroupsFile!\n");
     char *str2, *token2;
@@ -661,7 +640,6 @@ void fileSystemAPI::readGroupsFile(const char *token, int index)
 
     //read user by user
     while(token2 != NULL){
-        printf(" user[%d]= %s\n",groups[index].nrUsers, token2);
         groups[index].usersID[groups[index].nrUsers] = atoi(token2);
         groups[index].nrUsers ++;
 
@@ -671,10 +649,8 @@ void fileSystemAPI::readGroupsFile(const char *token, int index)
     delete str2;
 }
 
-void fileSystemAPI::writeImportantFile(const char *filename)
+void FileSystemAPI::writeImportantFile(const char *filename)
 {
-    //printf("Enter writeImportantFile() with file= %s!\n", filename);
-
     size_t inumber, length = 2*USERNAME_LENGTH, sizeRead = 0, totalToRead;
     char *data, *line;
 
@@ -691,8 +667,6 @@ void fileSystemAPI::writeImportantFile(const char *filename)
         totalToRead = totalGroups;
     else
         totalToRead = totalUsers;
-
-    //printf("Have totalGroups= %d\n", totalGroups);
 
     //write in line
     for(int i = 0; i < totalToRead; i ++){
@@ -717,37 +691,27 @@ void fileSystemAPI::writeImportantFile(const char *filename)
 
     myFileSystem->fs_write(inumber, data, Disk::BLOCK_SIZE, 0);
 
-    //printf("Data = \n%s", data);
-
     delete data;
-
-    //printf("Exit writeUsers ok!\n");
 }
 
-void fileSystemAPI::writeUsersFile(char *line, size_t length, int i)
+void FileSystemAPI::writeUsersFile(char *line, size_t length, int i)
 {
-    //printf("Enter writeUsersFile!\n");
-
     if(users[i].userID != 0)
         snprintf(line, length,"%s:x:%d:%d:%d\n", users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
     else
         line[0] = '\0';
 }
 
-void fileSystemAPI::writePasswordsFile(char *line, size_t length, int i)
+void FileSystemAPI::writePasswordsFile(char *line, size_t length, int i)
 {
-    //printf("Enter writePasswordsFile!\n");
-
     if(users[i].userID != 0)
         snprintf(line, length, "%s:%s\n", users[i].username, users[i].password);
     else
         line[0] = '\0';    
 }
 
-void fileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
+void FileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
 {   
-    //printf("Enter writeGroupsFile!\n");
-
     int totalWritten = 0;
 
     //read name and groupID
@@ -765,7 +729,7 @@ void fileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
     snprintf(line + totalWritten, length - totalWritten, "\n");
 }
 
-void fileSystemAPI::seeTypeImportantFile(const char *filename)
+void FileSystemAPI::seeTypeImportantFile(const char *filename)
 {
     isUsersFile = false;
     isPasswordsFile = false;
@@ -781,7 +745,7 @@ void fileSystemAPI::seeTypeImportantFile(const char *filename)
         isGroupsFile = true;
 }
 
-bool fileSystemAPI::setCurrentUser(uint32_t userID)
+bool FileSystemAPI::setCurrentUser(uint32_t userID)
 {
     for(int i = 0; i < totalUsers; i ++){
         if(users[i].userID == userID){
@@ -792,4 +756,13 @@ bool fileSystemAPI::setCurrentUser(uint32_t userID)
 
     fprintf(stderr, "User with ID= %d doesn't exist!\n");
     return false;
+}
+uint32_t FileSystemAPI::giveUserID()
+{   
+    for(int i = 2; i < totalUsers; i ++){
+        if(!bitmap[i])
+            return i;
+    }
+
+    return 0;
 }

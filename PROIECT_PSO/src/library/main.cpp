@@ -1,53 +1,58 @@
 /* #include "../../includes/disk_driver.h" */
-#include "../../includes/fileSystemAPI.h"
+#include "../../includes/shellProgram.h"
+
+#define BLOCKS 30
 
 int main(){
     Disk *disk = new Disk();
-    disk->disk_open("./bin/file.txt", 30);
-    // char* block1 = new char[Disk::BLOCK_SIZE];
-    // char buffer[1024] = { 0 };
-    // FileSystem *fs = new FileSystem(disk);
-    //FileSystem::format(disk);
+    disk->disk_open("./bin/file.txt", BLOCKS);
 
-    // printf("\nUnmount test:\n");
-    // FileSystem::unmount(disk);
+    ShellProgram *myShell = ShellProgram::getInstance(disk, BLOCKS);
 
-    // printf("\nMount test:\n");
-    // FileSystem::mount(disk);
+    
 
-    // printf("\nDebug function test:\n");
-    // FileSystem::debug(disk);
+    /*
+    char* block1 = new char[Disk::BLOCK_SIZE];
+    char buffer[1024] = { 0 };
+    FileSystem *fs = new FileSystem(disk);
+    FileSystem::format(disk);
 
-    // printf("Size of Inode: %d\n", sizeof(Inode));
+    printf("\nUnmount test:\n");
+    FileSystem::unmount(disk);
 
-    // // printf("\nso_read() function test on superblock:\n");
-    // // disk->so_read(0, block1);
-    // // SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
-    // // printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
+    printf("\nMount test:\n");
+    FileSystem::mount(disk);
 
-    //size_t testInode = fs->create("sefu.txt",1,1, 0666);
+    printf("\nDebug function test:\n");
+    FileSystem::debug(disk);
 
-    //fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
+    printf("Size of Inode: %d\n", sizeof(Inode));
 
-    // fs->fs_read(0, buffer, 1024, 0);
+    printf("\nso_read() function test on superblock:\n");
+    disk->so_read(0, block1);
+    SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
+    printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
 
-    // size_t testInode1 = fs->create("sefu1.txt",1,1, 0666);
+    size_t testInode = fs->create("sefu.txt",1,1, 0666);
 
-    // fs->fs_write(testInode1, "Ana are mere si pere", sizeof("Ana are mere si pere"), 0);
+    fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
-    // fs->fs_read(testInode1, buffer, 1024, 0);
+    fs->fs_read(0, buffer, 1024, 0);
 
-    // printf("Data read: %s\n", buffer);
+    size_t testInode1 = fs->create("sefu1.txt",1,1, 0666);
 
-    // delete fs;
+    fs->fs_write(testInode1, "Ana are mere si pere", sizeof("Ana are mere si pere"), 0);
 
-    // delete[] block1;
+    fs->fs_read(testInode1, buffer, 1024, 0);
 
+    printf("Data read: %s\n", buffer);
+
+    delete fs;
+
+    delete[] block1;
 
     //FileSystemAPI tests
 
-
-     ///*
     printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance(disk, 30);
@@ -79,12 +84,15 @@ int main(){
 
     fsAPI->deleteUser(2);
 
+    fsAPI->setCurrentUser(3);
+    fsAPI->writeFile("test.txt", data2, sizeof(data), 0);
+    fsAPI->setFilePermissions("test.txt", 0666);
+
     fileSystemAPI::destroyInstance();
 
     printf("Final data: %s", data2);
 
-    //*/
-
-
+    */
+    
     return 0;
 }
