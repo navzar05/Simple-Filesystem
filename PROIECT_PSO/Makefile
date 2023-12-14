@@ -23,8 +23,11 @@ $(LIB_DIR)/libdisk.a: $(SRC_DIR)/disk_driver.o
 $(SRC_DIR)/disk_driver.o: $(SRC_DIR)/disk_driver.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/disk_driver.o $(SRC_DIR)/disk_driver.cpp
 
-$(LIB_DIR)/libfilesystem.a: $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o
-	$(AR) $(ARFLAGS) $(LIB_DIR)/libfilesystem.a $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o
+$(LIB_DIR)/libfilesystem.a: $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o $(SRC_DIR)/shellProgram.o
+	$(AR) $(ARFLAGS) $(LIB_DIR)/libfilesystem.a $(SRC_DIR)/filesystem.o $(SRC_DIR)/fileSystemAPI.o $(SRC_DIR)/shellProgram.o
+
+$(SRC_DIR)/shellProgram.o: $(SRC_DIR)/shellProgram.cpp
+	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/shellProgram.o $(SRC_DIR)/shellProgram.cpp
 
 $(SRC_DIR)/fileSystemAPI.o: $(SRC_DIR)/fileSystemAPI.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/fileSystemAPI.o $(SRC_DIR)/fileSystemAPI.cpp

@@ -29,13 +29,13 @@ struct Group{
     int nrUsers;
 };
 
-class fileSystemAPI {
+class FileSystemAPI {
 private:
     friend class FileSystem;
-    fileSystemAPI(Disk *disk_path, size_t disk_blocks);
-    ~fileSystemAPI();
+    FileSystemAPI(Disk *disk_path, size_t disk_blocks);
+    ~FileSystemAPI();
 
-    static fileSystemAPI *instance;
+    static FileSystemAPI *instance;
     static User *users;
     static FileSystem *myFileSystem;
     static Group *groups;
@@ -49,6 +49,7 @@ private:
     static bool isUsersFile;
     static bool isPasswordsFile;
     static bool isGroupsFile;
+    static bool *bitmap;
 
     bool hasPermissions(const char *filename, uint32_t mode);
 
@@ -66,8 +67,8 @@ private:
     
 
 public:
-    static fileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
-    fileSystemAPI(fileSystemAPI&) = delete;
+    static FileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
+    FileSystemAPI(FileSystemAPI&) = delete;
     static void destroyInstance();
 
     bool createUser(const char *username, const char *password, uint32_t userID);
@@ -84,6 +85,7 @@ public:
     bool formatFileSystem();
 
     bool setCurrentUser(uint32_t userID);
+    uint32_t giveUserID();
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
