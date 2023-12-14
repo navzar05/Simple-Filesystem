@@ -14,9 +14,9 @@ private:
     static FileSystemAPI *myAPI;
 
     static bool canExecute;
-    
-    char *username;
-    char *password;
+
+    static char *username;
+    static char *password;
 
     void createAccount();
     bool login();
