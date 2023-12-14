@@ -153,7 +153,7 @@ bool FileSystemAPI::createUser(const char *username, const char *password, uint3
         }
 
         else if(users[i].userID == userID){
-            fprintf(stderr, "User with ID=%d already exists!\n", userID);
+            fprintf(stderr, "User with ID= %d already exists!\n", userID);
             return false;
         }
     }
@@ -185,8 +185,10 @@ bool FileSystemAPI::createUser(const char *username, const char *password, uint3
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
     users[index_user].permissions = 06;
-    bitmapUsers[index_user] = true;
+    bitmapUsers[users[index_user].userID] = true;
     totalUsers++;
+
+    printf("User= %s with pass= %s and ID= %d created!\n", users[index_user].username, users[index_user].password, users[index_user].userID);
 
     return true;
 }
@@ -339,7 +341,7 @@ bool FileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     memcpy(groups[index].groupname, groupname, strlen(groupname));
     groups[index].groupID = groupID;
     groups[index].nrUsers = 0;
-    bitmapGroups[index] = true;
+    bitmapGroups[groups[index].groupID] = true;
     totalGroups++;
 
     return true;
@@ -583,6 +585,9 @@ void FileSystemAPI::readUsersFile(const char *token, int index)
 
     //take permissions
     users[index].permissions = atoi(token);
+    
+    //set bitmap for users
+    bitmapUsers[users[index].userID] = true;
 }
 
 void FileSystemAPI::readPassswordsFile(const char *token, int index)
@@ -634,6 +639,9 @@ void FileSystemAPI::readGroupsFile(const char *token, int index)
     //take groupID
     printf("groupID= %s\n", token2);
     groups[index].groupID = atoi(token2);
+
+    //set bitmap for group
+    bitmapGroups[groups[index].groupID] = true;
 
     //check if has users
     if(!hasUsers){
@@ -773,11 +781,33 @@ uint32_t FileSystemAPI::setGroupID()
     return 0;
 }
 
+bool FileSystemAPI::checkCredentials(const char *username, const char *password)
+{
+    for(int i = 0; i < totalUsers; i ++){
+
+        //check for username
+        if(strncmp(users[i].username, username, (strlen(users[i].username) + 1)) == 0){
+            
+            //check for password
+            if(strncmp(users[i].password, password, (strlen(users[i].password) + 1)) == 0)
+                return true;
+            else{
+                fprintf(stderr, "Password not match!\n");
+                return false;
+            }
+        }
+    }
+
+    fprintf(stderr, "User= %s doesn't exist!\n", username);
+    return false;
+}
+
 uint32_t FileSystemAPI::setUserID()
 {   
-    for(int i = 2; i < totalUsers; i ++){
-        if(!bitmapUsers[i])
+    for(int i = 2; i < MAX_USERS; i ++){
+        if(!bitmapUsers[i]){
             return i;
+        }
     }
 
     return 0;
