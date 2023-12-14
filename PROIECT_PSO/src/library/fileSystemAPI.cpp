@@ -1,5 +1,4 @@
 #include "../../includes/fileSystemAPI.h"
-#include "fileSystemAPI.h"
 
 FileSystemAPI *FileSystemAPI::instance = nullptr;
 User *FileSystemAPI::users = nullptr;
@@ -15,7 +14,8 @@ size_t FileSystemAPI::currentUser = 0;
 bool FileSystemAPI::isUsersFile = false;
 bool FileSystemAPI::isPasswordsFile = false;
 bool FileSystemAPI::isGroupsFile = false;
-bool *FileSystemAPI::bitmap = nullptr;
+bool *FileSystemAPI::bitmapUsers = nullptr;
+bool *FileSystemAPI::bitmapGroups = nullptr;
 
 FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
@@ -24,7 +24,8 @@ FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
     this->users = new User[MAX_USERS]{};
     this->groups = new Group[MAX_GROUPS]{};
     this->disk = disk_path;
-    this->bitmap = new bool[MAX_USERS]{};
+    this->bitmapUsers = new bool[MAX_USERS]{};
+    this->bitmapGroups = new bool[MAX_GROUPS]{};
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
@@ -55,7 +56,8 @@ FileSystemAPI::~FileSystemAPI()
     unmountFileSystem();
     delete[] this->users;
     delete[] this->groups;
-    delete[] this->bitmap;
+    delete[] this->bitmapUsers;
+    delete[] this->bitmapGroups;
     //delete this->myFileSystem;
 }
 
@@ -183,7 +185,7 @@ bool FileSystemAPI::createUser(const char *username, const char *password, uint3
     users[index_user].userID = userID;
     users[index_user].groupID = 0;
     users[index_user].permissions = 06;
-    bitmap[index_user] = true;
+    bitmapUsers[index_user] = true;
     totalUsers++;
 
     return true;
@@ -211,7 +213,7 @@ bool FileSystemAPI::deleteUser(uint32_t userID)
             users[i].userID = 0;
             users[i].groupID = 0;
             users[i].permissions = 0;
-            bitmap[i] = false;
+            bitmapUsers[i] = false;
 
             return true;
         }
@@ -333,9 +335,11 @@ bool FileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     groups[index].groupname = new char[strlen(groupname) + 1]{};
     groups[index].usersID = new int[MAX_USERS]{};
 
+    //set group and bitmap
     memcpy(groups[index].groupname, groupname, strlen(groupname));
     groups[index].groupID = groupID;
     groups[index].nrUsers = 0;
+    bitmapGroups[index] = true;
     totalGroups++;
 
     return true;
@@ -358,6 +362,7 @@ bool FileSystemAPI::deleteGroup(uint32_t groupID)
 
             delete groups[i].groupname;
             delete groups[i].usersID;
+            bitmapGroups[i] = false;
 
             printf("Group with name= %s and ID= %d deleted!\n", groups[i].groupname, groups[i].groupID);
 
@@ -757,10 +762,21 @@ bool FileSystemAPI::setCurrentUser(uint32_t userID)
     fprintf(stderr, "User with ID= %d doesn't exist!\n");
     return false;
 }
-uint32_t FileSystemAPI::giveUserID()
+
+uint32_t FileSystemAPI::setGroupID()
+{
+    for(int i = 0; i < totalGroups; i ++){
+        if(!bitmapGroups)
+            return i;
+    }
+
+    return 0;
+}
+
+uint32_t FileSystemAPI::setUserID()
 {   
     for(int i = 2; i < totalUsers; i ++){
-        if(!bitmap[i])
+        if(!bitmapUsers[i])
             return i;
     }
 
