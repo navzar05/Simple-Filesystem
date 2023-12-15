@@ -11,10 +11,17 @@
 
 #define EXIT_COMMAND "exit"
 #define RETURN_COMMAND "return"
+
 #define GROUPADD_COMMAND "groupadd"
 #define SETGROUP_COMMAND "setgroup"
+
 #define DELETEUSER_COMMAND "deleteuser"
 #define DELETEGROUP_COMMAND "deletegroup"
+
+#define SHOWUSERS_COMMAND "showusers"
+#define SHOUWGROUPS_COMMAND "showgroups"
+
+#define INSTRUCTIONS_COMMAND "help"
 
 class ShellProgram{
 public:
@@ -40,8 +47,10 @@ private:
 
     void createAccount();
     bool login();
+
     bool checkCredentials();
     bool checkRootPrivilege();
+    bool checkCommand(const char *shellCommand, const char* userCommand);
 
     void prepareCommands();
     void executeCommands(char *line);
@@ -51,4 +60,5 @@ private:
     void readPassword(char *password);
 
     void fflushInputBuffer();
+    void showInstructions();
 };

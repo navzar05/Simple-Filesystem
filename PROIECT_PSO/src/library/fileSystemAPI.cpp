@@ -1,5 +1,4 @@
 #include "../../includes/fileSystemAPI.h"
-#include "fileSystemAPI.h"
 
 FileSystemAPI *FileSystemAPI::instance = nullptr;
 User *FileSystemAPI::users = nullptr;
@@ -276,12 +275,15 @@ bool FileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
                 //change if exists and update the users from group
                 if(groups[j].groupID == groupID){
+                    size_t exGroup = users[i].groupID;
                     users[i].groupID = groupID;
 
                     groups[j].usersID[groups[j].nrUsers] = userID;
                     groups[j].nrUsers ++;
 
                     hasChanged = true;
+
+                    printf("Change user= %s group from %d to %s\n", users[i].username, exGroup, groups[j].groupname);
                 }
             }
         }
@@ -489,6 +491,51 @@ ssize_t FileSystemAPI::writeFile(const char *filename, const char *data, size_t 
         totalWrite = myFileSystem->fs_write(inumber, data, length, offset);
 
     return totalWrite;
+}
+
+void FileSystemAPI::showUsers()
+{   
+    printf("All users: \n");
+    for(int i = 0; i < totalUsers; i ++){
+
+        //if ID is valid
+        if(users[i].userID){
+            printf("%d. User= %s with id= %d and group= %d\n", i, users[i].username, users[i].userID, users[i].groupID);
+        }
+    }
+}
+
+void FileSystemAPI::showGroups()
+{
+    printf("All users: \n");
+    for(int i = 0; i < totalGroups; i ++){
+
+        //if ID is valid
+        if(groups[i].groupID){
+            printf("%d. Group= %s with id= %d ", i, groups[i].groupname, groups[i].groupID);
+
+            //check if has users
+            bool hasUsers = false;
+            for(int j= 0; j < groups[i].nrUsers; j ++){
+                if(groups[i].usersID[j])
+                    hasUsers = true;
+            }
+
+            //if has users, print them
+            if(hasUsers){
+
+                printf("has users with id= ");
+                for(int j = 0; j < groups[i].nrUsers; j ++){
+                    if(groups[i].usersID[j])
+                        printf("%d ", groups[i].usersID[j]);
+                }
+
+                printf("\n");
+            }
+            else
+                printf("do not have users!\n");
+        }
+    }
 }
 
 void FileSystemAPI::readImportantFile(const char *filename)

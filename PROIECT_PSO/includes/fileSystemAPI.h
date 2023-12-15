@@ -65,7 +65,6 @@ private:
     void writeGroupsFile(char *line, size_t length, int i);
 
     void seeTypeImportantFile(const char *filename);
-    
 
 public:
     static FileSystemAPI* getInstance(Disk *disk_path, size_t disk_blocks);
@@ -90,6 +89,7 @@ public:
     uint32_t setGroupID();
     bool checkCredentials(const char *username, const char *password);
     uint32_t getUserID(const char *username);
+    uint32_t getGroupID(const char *groupname);
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
@@ -97,4 +97,7 @@ public:
 
     ssize_t readFile(const char* filename, char *data, size_t length, size_t offset = 0);
     ssize_t writeFile(const char* filename, const char *data, size_t length, size_t offset = 0);
+
+    void showUsers();
+    void showGroups();
 };
