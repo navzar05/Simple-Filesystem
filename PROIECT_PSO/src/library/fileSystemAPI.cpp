@@ -1,4 +1,5 @@
 #include "../../includes/fileSystemAPI.h"
+#include "fileSystemAPI.h"
 
 FileSystemAPI *FileSystemAPI::instance = nullptr;
 User *FileSystemAPI::users = nullptr;
@@ -343,6 +344,8 @@ bool FileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     groups[index].nrUsers = 0;
     bitmapGroups[groups[index].groupID] = true;
     totalGroups++;
+
+    printf("Group= %s with ID= %d created!\n", groups[index].groupname, groups[index].groupID);
 
     return true;
 }
@@ -773,8 +776,8 @@ bool FileSystemAPI::setCurrentUser(uint32_t userID)
 
 uint32_t FileSystemAPI::setGroupID()
 {
-    for(int i = 0; i < totalGroups; i ++){
-        if(!bitmapGroups)
+    for(int i = 2; i < MAX_GROUPS; i ++){
+        if(!bitmapGroups[i])
             return i;
     }
 
@@ -800,6 +803,32 @@ bool FileSystemAPI::checkCredentials(const char *username, const char *password)
 
     fprintf(stderr, "User= %s doesn't exist!\n", username);
     return false;
+}
+
+uint32_t FileSystemAPI::getUserID(const char *username)
+{
+    for(int i = 0; i < totalUsers; i ++){
+        if(strncmp(users[i].username, username, (strlen(username) + 1)) == 0){
+            printf("Find username= %s with ID= %d\n", users[i].username, users[i].userID);
+            return users[i].userID;
+        }
+    }
+
+    fprintf(stderr, "Username= %s doesn't exist!\n", username);
+    return 0;
+}
+
+uint32_t FileSystemAPI::getGroupID(const char *groupname)
+{
+    for(int i = 0; i < totalGroups; i ++){
+        if(strncmp(groups[i].groupname, groupname, (strlen(groupname) + 1)) == 0){
+            printf("Find groupname= %s with ID= %d\n", groups[i].groupname, groups[i].groupID);
+            return groups[i].groupID;
+        }
+    }
+
+    fprintf(stderr, "Groupname= %s doesn't exist!\n", groupname);
+    return 0;
 }
 
 uint32_t FileSystemAPI::setUserID()

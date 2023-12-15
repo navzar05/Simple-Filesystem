@@ -36,4 +36,4 @@ $(SRC_DIR)/filesystem.o: $(SRC_DIR)/filesystem.cpp
 	$(CC) $(CFLAGS) -c -o $(SRC_DIR)/filesystem.o $(SRC_DIR)/filesystem.cpp
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/main
+	rm -f $(SRC_DIR)/*.o $(LIB_DIR)/*.a $(BIN_DIR)/*
