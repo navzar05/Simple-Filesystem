@@ -16,8 +16,11 @@ ShellProgram::ShellProgram(Disk *disk, size_t blocks)
     username = new char[LENGTH]{};
     password = new char[LENGTH]{};
 
+    //set API and root
     myAPI = FileSystemAPI::getInstance(disk, blocks);
-    myAPI->createUser("root", "Adsajpvw!!13.", 1);
+    myAPI->createUser(ROOT_NAME, ROOT_PASSWORD, 1);
+    myAPI->createGroup(ROOT_GROUP, 1);
+    myAPI->setUserGroup(1, 1);
 }
 
 ShellProgram::~ShellProgram()
@@ -99,18 +102,20 @@ void ShellProgram::createAccount()
 
 bool ShellProgram::login()
 {
-    //login
+    //enter username
     printf("> Enter username: ");
-   
     if(fgets(username, LENGTH, stdin) != NULL){
         username[strcspn(username, "\n")] = '\0';
     }
 
+    //enter password
     printf("> Enter password: ");
     readPassword(password);
 
-    //check credentials
+    //check credentials and set current user if exists
     if(checkCredentials()){
+        userID = myAPI->getUserID(username);
+        myAPI->setCurrentUser(userID);
         executeFlag = true;
         return true;
     }
@@ -121,6 +126,31 @@ bool ShellProgram::login()
 bool ShellProgram::checkCredentials()
 {
     return myAPI->checkCredentials(username, password);
+}
+
+bool ShellProgram::checkRootPrivilege()
+{
+    //initialise password to enter
+    char *passwordRoot = new char[PASSWORD_LENGTH]{};
+    
+    //read password
+    printf("[sudo] password for %s: ", username);
+    readPassword(passwordRoot);
+    
+    //check if has root's password
+    if(strncmp(ROOT_PASSWORD, passwordRoot, (strlen(passwordRoot) + 1)) == 0)
+        return true;
+
+    printf("User= %s doesn't have root privilege!\n", username);
+    return false;
+}
+
+bool ShellProgram::checkCommand(const char *shellCommand, const char *userCommand)
+{
+    if(strncmp(shellCommand, userCommand, (strlen(userCommand) + 1)) == 0)
+        return true;
+
+    return false;
 }
 
 void ShellProgram::prepareCommands()
@@ -141,20 +171,75 @@ void ShellProgram::prepareCommands()
         }
 
         //see if exit, return or execute commands
-        if(strncmp(exitCommand, command, strlen(exitCommand)) == 0)
+        if(strncmp(EXIT_COMMAND, command, (strlen(command) + 1)) == 0)
             exitFlag = true;
         
-        else if(strncmp(returnCommand, command, strlen(returnCommand)) == 0)
+        else if(strncmp(RETURN_COMMAND, command, (strlen(command) + 1)) == 0)
             returnFlag = true;
+
+        else if(strncmp(INSTRUCTIONS_COMMAND, command, (strlen(command) + 1)) == 0)
+            showInstructions();
         
         else 
             executeCommands(command);
     }
 }
 
-void ShellProgram::executeCommands(const char *command)
+void ShellProgram::executeCommands(char *line)
 {
+    //initialise command and parameters
+    char *parameters = strtok(line, " \n");
+    char *command = new char[strlen(parameters) + 1]{};
 
+    //set command and parameters
+    memcpy(command, parameters, strlen(parameters) + 1);
+    parameters = strtok(NULL, " \n");
+
+    //select command
+    //add group
+    if(checkCommand(GROUPADD_COMMAND, command)){
+        size_t groupID = myAPI->setGroupID();
+        myAPI->createGroup(parameters, groupID);
+    }
+
+    //setgroup
+    else if(checkCommand(SETGROUP_COMMAND, command)){
+        size_t groupID = myAPI->getGroupID(parameters);
+        myAPI->setUserGroup(userID, groupID);
+    }
+
+    //delete user
+    else if(checkCommand(DELETEUSER_COMMAND, command)){
+        
+        if(checkRootPrivilege()){
+            size_t userDeleteID = myAPI->getUserID(parameters);
+            myAPI->deleteUser(userDeleteID);
+        }
+    }
+
+    //delete group
+    else if(checkCommand(DELETEGROUP_COMMAND, command)){
+
+        if(checkRootPrivilege()){
+            size_t groupDeleteID = myAPI->getGroupID(parameters);
+            myAPI->deleteGroup(groupDeleteID);
+        }
+    }
+
+    //show users
+    else if(checkCommand(SHOWUSERS_COMMAND, command)){
+        myAPI->showUsers();
+    }
+
+    //show groups
+    else if(checkCommand(SHOUWGROUPS_COMMAND, command)){
+        myAPI->showGroups();
+    }
+
+    //incorrect command
+    else{
+        printf("Incorrect command!\n");
+    }
 }
 
 void ShellProgram::run()
@@ -223,3 +308,16 @@ void ShellProgram::fflushInputBuffer()
     }
     printf("\n");
 }
+
+void ShellProgram::showInstructions()
+{
+    printf("\nInstructions for commands:\n");
+    printf("%s\t-\tshow instruction\n", INSTRUCTIONS_COMMAND);
+    printf("%s\t<groupname>\t-\tcreate\tgroup\n%s <groupname>\t-\tset group for current user\n", GROUPADD_COMMAND, SETGROUP_COMMAND);
+    printf("%s\t<username>\t-\tdelete\tuser\t(required root privilege)\n", DELETEUSER_COMMAND);
+    printf("%s\t<groupname>\t-\tdelete\tgroup\t(required root privilege)\n", DELETEGROUP_COMMAND);
+    printf("%s\t-\tshow\tall\tusers\n", SHOWUSERS_COMMAND);
+    printf("%s\t-\tshow\tall\tgroups\n", SHOUWGROUPS_COMMAND);
+    printf("%s\n%s\n", EXIT_COMMAND, RETURN_COMMAND);
+}
+

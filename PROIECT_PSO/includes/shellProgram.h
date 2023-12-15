@@ -5,8 +5,23 @@
 #define LENGTH 20
 
 #define DOMAIN_NAME "Legendary"
-#define exitCommand "exit"
-#define returnCommand "return"
+#define ROOT_NAME "root"
+#define ROOT_PASSWORD "seful"
+#define ROOT_GROUP "ROOT"
+
+#define EXIT_COMMAND "exit"
+#define RETURN_COMMAND "return"
+
+#define GROUPADD_COMMAND "groupadd"
+#define SETGROUP_COMMAND "setgroup"
+
+#define DELETEUSER_COMMAND "deleteuser"
+#define DELETEGROUP_COMMAND "deletegroup"
+
+#define SHOWUSERS_COMMAND "showusers"
+#define SHOUWGROUPS_COMMAND "showgroups"
+
+#define INSTRUCTIONS_COMMAND "help"
 
 class ShellProgram{
 public:
@@ -32,14 +47,18 @@ private:
 
     void createAccount();
     bool login();
+
     bool checkCredentials();
+    bool checkRootPrivilege();
+    bool checkCommand(const char *shellCommand, const char* userCommand);
 
     void prepareCommands();
-    void executeCommands(const char *command);
+    void executeCommands(char *line);
 
     void turnOffEcho();
     void turnOnEcho();
     void readPassword(char *password);
 
     void fflushInputBuffer();
+    void showInstructions();
 };
