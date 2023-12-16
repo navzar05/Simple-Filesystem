@@ -1,11 +1,14 @@
 /* #include "../../includes/disk_driver.h" */
 #include "../../includes/shellProgram.h"
 
-#define BLOCKS 100
+#define BLOCKS 30
 
 int main(){
     Disk *disk = new Disk();
     disk->disk_open("./bin/file.txt", BLOCKS);
+
+    //shell tests
+    printf("\n Shell tests!\n\n");
 
     ShellProgram *myShell = ShellProgram::getInstance(disk, BLOCKS);
 

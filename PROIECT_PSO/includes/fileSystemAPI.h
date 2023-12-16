@@ -14,6 +14,10 @@
 #define WRITE_PERMISSION 02
 #define READ_PERMISSION  04
 
+#define ROOT_NAME "root"
+#define ROOT_PASSWORD "seful"
+#define ROOT_GROUP "ROOT"
+
 struct User{
     char *username;
     char *password;
@@ -24,9 +28,10 @@ struct User{
 
 struct Group{
     char *groupname;
-    uint32_t groupID;
     int *usersID;
     int nrUsers;
+    uint32_t permissions;
+    uint32_t groupID;
 };
 
 class FileSystemAPI {
@@ -84,12 +89,15 @@ public:
     bool unmountFileSystem();
     bool formatFileSystem();
 
+
+    bool checkCredentials(const char *username, const char *password);
     bool setCurrentUser(uint32_t userID);
     uint32_t setUserID();
     uint32_t setGroupID();
-    bool checkCredentials(const char *username, const char *password);
+    
     uint32_t getUserID(const char *username);
     uint32_t getGroupID(const char *groupname);
+    uint32_t getCurrentGroupID();
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
@@ -100,4 +108,7 @@ public:
 
     void showUsers();
     void showGroups();
+
+    bool changeUserPermissions(uint32_t userID, uint32_t permissions);
+    bool changeGroupPermissions(uint32_t groupID, uint32_t permissions);    
 };

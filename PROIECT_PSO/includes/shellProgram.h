@@ -3,25 +3,54 @@
 
 #define COMMAND_LENGTH 20
 #define LENGTH 20
+#define FILE_PERMISSIONS 0644
 
 #define DOMAIN_NAME "Legendary"
-#define ROOT_NAME "root"
-#define ROOT_PASSWORD "seful"
-#define ROOT_GROUP "ROOT"
 
 #define EXIT_COMMAND "exit"
 #define RETURN_COMMAND "return"
-
-#define GROUPADD_COMMAND "groupadd"
-#define SETGROUP_COMMAND "setgroup"
-
-#define DELETEUSER_COMMAND "deleteuser"
-#define DELETEGROUP_COMMAND "deletegroup"
-
-#define SHOWUSERS_COMMAND "showusers"
-#define SHOUWGROUPS_COMMAND "showgroups"
-
 #define INSTRUCTIONS_COMMAND "help"
+
+#define GROUP_ADD_COMMAND "groupadd"
+#define SET_GROUP_COMMAND "setgroup"
+
+#define CHANGE_USER_PERMISSIONS_COMMAND "chusr"
+#define CHANGE_GROUP_PERMISSIONS_COMMAND "chgrp"
+#define DELETE_USER_COMMAND "deleteuser"
+#define DELETE_GROUP_COMMAND "deletegroup"
+
+#define SHOW_USERS_COMMAND "showusers"
+#define SHOW_GROUPS_COMMAND "showgroups"
+
+#define CREATE_FILE_COMMAND "touch"
+#define COPY_FILE_COMMAND "cp"
+#define MOVE_FILE_COMMAND "mv"
+#define READ_FILE_COMMAND "cat"
+#define DELETE_FILE_COMMAND "rm"
+
+#define FORMAT_COMMAND "format"
+#define MOUNT_COMMAND "mount"
+#define UMNOUNT_COMMAND "unmount"
+
+enum class CommandType{
+    GroupAddCommand,
+    SetGroupCommand,
+    ChangeUserPermissionsCommand,
+    ChangeGroupPermissionsCommand,
+    DeleteUserCommand,
+    DeleteGroupCommand,
+    ShowUsersCommand,
+    ShowGroupsCommand,
+    CreateFileCommand,
+    CopyFileCommand,
+    MoveFileCommand,
+    ReadFileCommand,
+    DeleteFileCommand,
+    FormatCommand,
+    MountCommand,
+    UnmountCommand
+};
+
 
 class ShellProgram{
 public:
@@ -41,6 +70,8 @@ private:
     static char *password;
 
     static uint32_t userID;
+    static uint32_t groupID;
+
     static bool executeFlag;
     static bool exitFlag;
     static bool returnFlag;
@@ -61,4 +92,19 @@ private:
 
     void fflushInputBuffer();
     void showInstructions();
+    CommandType selectCommand(const char *command);
+
+    void grpAddCommand(char *parameters);
+    void setGrpCommand(char *parameters);
+    void chUsrPermCommand(char *parameters);
+    void chGrpPermCommand(char *parameters);
+    void delUsrCommand(char *parameters);
+    void delGrpCommand(char *parameters);
+    void showUsrCommand(char *parameters);
+    void showGrpCommand(char *parameters);
+    void createFileCommand(char *parameters);
+    void copyFileCommand(char *parameters);
+    void moveFileCommand(char *parameters);
+    void readFileCommand(char *parameters);
+    void delFileCommand(char *paramters);
 };

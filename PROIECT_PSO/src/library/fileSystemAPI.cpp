@@ -20,12 +20,11 @@ bool *FileSystemAPI::bitmapGroups = nullptr;
 FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
 {
     //initialize variables
-    this->diskBlocks = disk_blocks;
     this->users = new User[MAX_USERS]{};
     this->groups = new Group[MAX_GROUPS]{};
-    this->disk = disk_path;
     this->bitmapUsers = new bool[MAX_USERS]{};
     this->bitmapGroups = new bool[MAX_GROUPS]{};
+    this->disk = disk_path;
 
     //initialise File System
     myFileSystem = new FileSystem(disk);
@@ -38,11 +37,18 @@ FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
     createFile(USERS_FILE, 1, 1, 0644);
     createFile(PASSWORDS_FILE, 1, 1, 0644);
     createFile(GROUPS_FILE, 1, 1, 0644);
-   
+
     //read if was data before start the File System
     readImportantFile(USERS_FILE);
     readImportantFile(PASSWORDS_FILE);
     readImportantFile(GROUPS_FILE);
+
+    //initialise root
+    createUser(ROOT_NAME, ROOT_PASSWORD, 1);
+    createGroup(ROOT_GROUP, 1);
+    setUserGroup(1, 1);
+    changeUserPermissions(1, 7);
+    changeGroupPermissions(1, 7);
 }
 
 FileSystemAPI::~FileSystemAPI()
@@ -64,8 +70,14 @@ FileSystemAPI::~FileSystemAPI()
 bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 {
     size_t inumber = myFileSystem->getInumber(filename);
+
+    if(inumber == -1){
+        fprintf(stderr, "File= %s doesn't exist to check permissions!\n", filename);
+        return false;
+    }
+
     Inode inode = myFileSystem->getInode(inumber);
-    uint32_t tmp, mask, userRights;
+    uint32_t tmp, mask, permissions;
 
     //is the owner
     if(inode.OwnerUserID == users[currentUser].userID){
@@ -74,6 +86,9 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         mask = 0700;
         tmp = (mask & inode.Permissions);
         tmp = (tmp >> 6);
+    
+        //select from current user his permissions
+        permissions = (users[currentUser].permissions & mode);
     }
 
     //has the same group
@@ -83,6 +98,12 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         mask = 0070;
         tmp = (mask & inode.Permissions);
         tmp = (tmp >> 3);
+
+        //select from user's group his permissions
+        for(int i = 0; i < totalGroups; i ++){
+            if(groups[i].groupID == users[currentUser].groupID)
+                permissions = (groups[i].permissions & mode);
+        }
     }
 
     //none of them
@@ -91,16 +112,15 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         //select other permissions
         mask = 0007;
         tmp = (mask & inode.Permissions);
+
+        permissions = tmp;
     }
 
-    //select from current user his rights
-    userRights = (users[currentUser].permissions & mode);
-
     //has  permission for mode
-    if((tmp & userRights) == mode)
+    if((tmp & permissions) == mode)
         return true;
 
-    fprintf(stderr, "User= %s has can't do mode= %d on file= %s\n", users[currentUser].username, mode, filename);
+    fprintf(stderr, "User= %s can't do mode= %d on file= %s\n", users[currentUser].username, mode, filename);
     return false;
 }
 
@@ -259,6 +279,7 @@ bool FileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
             }
 
             //reset groupID for user if he is a traitor
+            size_t exGroup = users[i].groupID;
             users[i].groupID = 0;
 
             //find the groupID
@@ -275,7 +296,7 @@ bool FileSystemAPI::setUserGroup(uint32_t userID, uint32_t groupID)
 
                 //change if exists and update the users from group
                 if(groups[j].groupID == groupID){
-                    size_t exGroup = users[i].groupID;
+
                     users[i].groupID = groupID;
 
                     groups[j].usersID[groups[j].nrUsers] = userID;
@@ -344,6 +365,7 @@ bool FileSystemAPI::createGroup(const char *groupname, uint32_t groupID)
     memcpy(groups[index].groupname, groupname, strlen(groupname));
     groups[index].groupID = groupID;
     groups[index].nrUsers = 0;
+    groups[index].permissions = 4;
     bitmapGroups[groups[index].groupID] = true;
     totalGroups++;
 
@@ -440,7 +462,18 @@ bool FileSystemAPI::removeFile(const char *filename)
     if(inumber == -1)
         return false;
 
-    return myFileSystem->remove(inumber);
+    //check permissions
+    if(hasPermissions(filename, WRITE_PERMISSION)){
+        
+        if(myFileSystem->remove(inumber))
+            return true;
+        
+        else
+            fprintf(stderr, "File= %s doesn`t exist to delete!\n", filename);
+    }
+
+    fprintf(stderr, "User= %s doesn\t have permissions to delete file= %s\n", users[currentUser].username, filename);
+    return false;
 }
 
 statDetails FileSystemAPI::getFileStat(const char *filename)
@@ -463,6 +496,13 @@ ssize_t FileSystemAPI::readFile(const char *filename, char *data, size_t length,
 
     size_t totalRead;
     Inode inode = myFileSystem->getInode(inumber);
+
+    //see if exceeds the limit
+    if((length + offset) >= inode.Size){
+        length = inode.Size - offset;
+    }
+
+    data = new char[length  + 1]{};
 
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
@@ -499,8 +539,8 @@ void FileSystemAPI::showUsers()
     for(int i = 0; i < totalUsers; i ++){
 
         //if ID is valid
-        if(users[i].userID){
-            printf("%d. User= %s with id= %d and group= %d\n", i, users[i].username, users[i].userID, users[i].groupID);
+        if(users[i].userID){ 
+            printf("%d. User= %s with id= %d and group= %d\n", (i + 1), users[i].username, users[i].userID, users[i].groupID);
         }
     }
 }
@@ -512,7 +552,7 @@ void FileSystemAPI::showGroups()
 
         //if ID is valid
         if(groups[i].groupID){
-            printf("%d. Group= %s with id= %d ", i, groups[i].groupname, groups[i].groupID);
+            printf("%d. Group= %s with id= %d and permissions= %d ", (i + 1), groups[i].groupname, groups[i].groupID, groups[i].permissions);
 
             //check if has users
             bool hasUsers = false;
@@ -536,6 +576,32 @@ void FileSystemAPI::showGroups()
                 printf("do not have users!\n");
         }
     }
+}
+
+bool FileSystemAPI::changeUserPermissions(uint32_t userID, uint32_t permissions)
+{
+    for(int i = 0; i < totalUsers; i ++){
+        if(users[i].userID == userID){
+            users[i].permissions = permissions;
+            return true;
+        }
+    }
+
+    fprintf(stderr ,"User with ID= %d doesn't exist!\n", userID);
+    return false;
+}
+
+bool FileSystemAPI::changeGroupPermissions(uint32_t groupID, uint32_t permissions)
+{
+    for(int i = 0; i < totalGroups; i ++){
+        if(groups[i].groupID == groupID){
+            groups[i].permissions = permissions;
+            return true;
+        }
+    }
+
+    fprintf(stderr, "Group with ID= %d doesn't exist!\n", groupID);
+    return false;
 }
 
 void FileSystemAPI::readImportantFile(const char *filename)
@@ -620,6 +686,7 @@ void FileSystemAPI::readUsersFile(const char *token, int index)
     //read username 
     users[index].username = new char[strlen(token) + 1]{};
     memcpy(users[index].username, token, strlen(token));
+    printf("username= %s\n", token);
     token = strtok(NULL, ":");
 
     //ignore password
@@ -627,15 +694,18 @@ void FileSystemAPI::readUsersFile(const char *token, int index)
 
     //take userID
     users[index].userID = atoi(token);
+    printf("userID= %d\n", atoi(token));
     token = strtok(NULL, ":");
 
     //take groupID
     users[index].groupID = atoi(token);
+    printf("user's groupID= %d\n", atoi(token));
     token = strtok(NULL, "\n");
 
     //take permissions
     users[index].permissions = atoi(token);
-    
+    printf("user's permissions: %d\n", users[index].groupID);
+
     //set bitmap for users
     bitmapUsers[users[index].userID] = true;
 }
@@ -689,6 +759,11 @@ void FileSystemAPI::readGroupsFile(const char *token, int index)
     //take groupID
     printf("groupID= %s\n", token2);
     groups[index].groupID = atoi(token2);
+    token2 = strtok(NULL, ":\n");
+
+    //take group permissions
+    printf("group permissions= %d", atoi(token2));
+    groups[index].permissions = atoi(token2);
 
     //set bitmap for group
     bitmapGroups[groups[index].groupID] = true;
@@ -778,7 +853,7 @@ void FileSystemAPI::writeGroupsFile(char *line, size_t length, int i)
     int totalWritten = 0;
 
     //read name and groupID
-    int written = snprintf(line, length, "%s:x:%d", groups[i].groupname, groups[i].groupID);
+    int written = snprintf(line, length, "%s:x:%d:%d", groups[i].groupname, groups[i].groupID, groups[i].permissions);
     totalWritten += written;
 
     //read every user from that group
@@ -876,6 +951,16 @@ uint32_t FileSystemAPI::getGroupID(const char *groupname)
 
     fprintf(stderr, "Groupname= %s doesn't exist!\n", groupname);
     return 0;
+}
+
+uint32_t FileSystemAPI::getCurrentGroupID()
+{
+    if(currentUser > totalUsers){
+        fprintf(stderr, "Incorrect current user!\n");
+        return 0;
+    }
+
+    return users[currentUser].groupID;
 }
 
 uint32_t FileSystemAPI::setUserID()
