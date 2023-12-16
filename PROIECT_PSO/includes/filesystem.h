@@ -35,12 +35,12 @@ struct statDetails{
     int32_t OwnerUserID;
     uint32_t OwnerGroupID;
     uint32_t Permissions;
+
+    char Filename[MAX_FILENAME_LENGTH];
 };
 
 class FileSystem {
 private:
-    friend class fileSystemAPI;
-
     static uint32_t INODES_PER_BLOCK;   //= 32;
     static uint32_t POINTERS_PER_INODE; //= 5;
     static uint32_t POINTERS_PER_BLOCK; //= 1024;
@@ -66,7 +66,6 @@ private:
     static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 
     static size_t getInodeBlockFromInumber(size_t inumber);
-    //bool checkImportantFiles(const char *filename, size_t inumber);
     static bool initBitmap(const Inode* inodeBlock);
 public:
     FileSystem(Disk *disk);
@@ -83,6 +82,9 @@ public:
     int create(const char *filename, uint32_t _OwnerUserID, uint32_t _OwnerGroupID, uint32_t _Permissions);
     int    remove(size_t inumber);
     statDetails stat(size_t inumber);
+
+    char *getSuperBlock();
+    char *getInodeBlocks();
 
     size_t fs_read(size_t inumber, char *data, size_t length, size_t offset);
     size_t fs_write(size_t inumber, const char *data, size_t length, size_t offset);

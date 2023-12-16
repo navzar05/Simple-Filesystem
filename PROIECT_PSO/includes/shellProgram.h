@@ -1,7 +1,7 @@
 #include "fileSystemAPI.h"
 #include "termios.h"
 
-#define COMMAND_LENGTH 20
+#define COMMAND_LENGTH 50
 #define LENGTH 20
 #define FILE_PERMISSIONS 0644
 
@@ -23,14 +23,17 @@
 #define SHOW_GROUPS_COMMAND "showgroups"
 
 #define CREATE_FILE_COMMAND "touch"
-#define COPY_FILE_COMMAND "cp"
-#define MOVE_FILE_COMMAND "mv"
+#define COPY_IN_COMMAND "copyin"
+#define COPY_OUT_COMMAND "copyout"
 #define READ_FILE_COMMAND "cat"
 #define DELETE_FILE_COMMAND "rm"
 
 #define FORMAT_COMMAND "format"
 #define MOUNT_COMMAND "mount"
 #define UMNOUNT_COMMAND "unmount"
+
+#define ALL_FILES_COMMAND "ls"
+#define ONE_FILE_COMMAND "stat"
 
 enum class CommandType{
     GroupAddCommand,
@@ -42,13 +45,16 @@ enum class CommandType{
     ShowUsersCommand,
     ShowGroupsCommand,
     CreateFileCommand,
-    CopyFileCommand,
-    MoveFileCommand,
+    CopyInCommand,
+    CopyOutCommand,
     ReadFileCommand,
     DeleteFileCommand,
     FormatCommand,
     MountCommand,
-    UnmountCommand
+    UnmountCommand,
+    IncorrectCommand,
+    AllFilesCommand,
+    OneFileCommand
 };
 
 
@@ -82,6 +88,7 @@ private:
     bool checkCredentials();
     bool checkRootPrivilege();
     bool checkCommand(const char *shellCommand, const char* userCommand);
+    bool checkParameters(const char *command, const char *parameters);
 
     void prepareCommands();
     void executeCommands(char *line);
@@ -103,8 +110,13 @@ private:
     void showUsrCommand(char *parameters);
     void showGrpCommand(char *parameters);
     void createFileCommand(char *parameters);
-    void copyFileCommand(char *parameters);
-    void moveFileCommand(char *parameters);
+    void copyInCommand(char *parameters);
+    void copyOutCommand(char *parameters);
     void readFileCommand(char *parameters);
-    void delFileCommand(char *paramters);
+    void delFileCommand(char *parameters);
+    void formatCommand();
+    void mountCommand();
+    void unmountCommand();
+    void showAllFilesCommand();
+    void showOneFileCommand(char *parameters);
 };

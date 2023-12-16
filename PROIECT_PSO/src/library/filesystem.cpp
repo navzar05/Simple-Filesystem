@@ -1,6 +1,4 @@
 #include "../../includes/filesystem.h"
-#include "../../includes/fileSystemAPI.h"
-#include "filesystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
 uint32_t FileSystem::POINTERS_PER_INODE = 0;
@@ -484,9 +482,21 @@ statDetails FileSystem::stat(size_t inumber){
     inodeDetails.OwnerGroupID = inodes[inumber].OwnerGroupID;
     inodeDetails.Permissions = inodes[inumber].Permissions;
 
+    memcpy(inodeDetails.Filename, inodes[inumber].Filename, MAX_FILENAME_LENGTH);
+
     inodes = NULL;
 
     return inodeDetails;
+}
+
+char *FileSystem::getSuperBlock()
+{
+    return superBlock;
+}
+
+char *FileSystem::getInodeBlocks()
+{
+    return inodeBlocks;
 }
 
 size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)

@@ -36,7 +36,6 @@ struct Group{
 
 class FileSystemAPI {
 private:
-    friend class FileSystem;
     FileSystemAPI(Disk *disk_path, size_t disk_blocks);
     ~FileSystemAPI();
 
@@ -89,7 +88,6 @@ public:
     bool unmountFileSystem();
     bool formatFileSystem();
 
-
     bool checkCredentials(const char *username, const char *password);
     bool setCurrentUser(uint32_t userID);
     uint32_t setUserID();
@@ -98,6 +96,7 @@ public:
     uint32_t getUserID(const char *username);
     uint32_t getGroupID(const char *groupname);
     uint32_t getCurrentGroupID();
+    uint32_t getSizeInode(const char *filename);
 
     ssize_t createFile(const char* filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions);
     bool removeFile(const char* filename);
@@ -108,6 +107,7 @@ public:
 
     void showUsers();
     void showGroups();
+    void showFiles();
 
     bool changeUserPermissions(uint32_t userID, uint32_t permissions);
     bool changeGroupPermissions(uint32_t groupID, uint32_t permissions);    
