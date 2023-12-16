@@ -6,6 +6,8 @@ char *ShellProgram::username = nullptr;
 char *ShellProgram::password = nullptr;
 
 uint32_t ShellProgram::userID = 0;
+uint32_t ShellProgram::groupID = 0;
+
 bool ShellProgram::executeFlag = false;
 bool ShellProgram::exitFlag = false;
 bool ShellProgram::returnFlag = false;
@@ -18,9 +20,6 @@ ShellProgram::ShellProgram(Disk *disk, size_t blocks)
 
     //set API and root
     myAPI = FileSystemAPI::getInstance(disk, blocks);
-    myAPI->createUser(ROOT_NAME, ROOT_PASSWORD, 1);
-    myAPI->createGroup(ROOT_GROUP, 1);
-    myAPI->setUserGroup(1, 1);
 }
 
 ShellProgram::~ShellProgram()
@@ -116,6 +115,7 @@ bool ShellProgram::login()
     if(checkCredentials()){
         userID = myAPI->getUserID(username);
         myAPI->setCurrentUser(userID);
+        groupID = myAPI->getCurrentGroupID();
         executeFlag = true;
         return true;
     }
@@ -196,50 +196,67 @@ void ShellProgram::executeCommands(char *line)
     parameters = strtok(NULL, " \n");
 
     //select command
-    //add group
-    if(checkCommand(GROUPADD_COMMAND, command)){
-        size_t groupID = myAPI->setGroupID();
-        myAPI->createGroup(parameters, groupID);
-    }
+    CommandType tmp = selectCommand(command);
 
-    //setgroup
-    else if(checkCommand(SETGROUP_COMMAND, command)){
-        size_t groupID = myAPI->getGroupID(parameters);
-        myAPI->setUserGroup(userID, groupID);
-    }
-
-    //delete user
-    else if(checkCommand(DELETEUSER_COMMAND, command)){
+    switch(tmp){
         
-        if(checkRootPrivilege()){
-            size_t userDeleteID = myAPI->getUserID(parameters);
-            myAPI->deleteUser(userDeleteID);
-        }
-    }
+        case CommandType::GroupAddCommand:
+            grpAddCommand(parameters);
+            break;
 
-    //delete group
-    else if(checkCommand(DELETEGROUP_COMMAND, command)){
+        case CommandType::SetGroupCommand:
+            setGrpCommand(parameters);
+            break;
 
-        if(checkRootPrivilege()){
-            size_t groupDeleteID = myAPI->getGroupID(parameters);
-            myAPI->deleteGroup(groupDeleteID);
-        }
-    }
+        case CommandType::DeleteUserCommand:
+            delUsrCommand(parameters);
+            break;
 
-    //show users
-    else if(checkCommand(SHOWUSERS_COMMAND, command)){
-        myAPI->showUsers();
-    }
+        case CommandType::DeleteGroupCommand:
+            delGrpCommand(parameters);
+            break;
 
-    //show groups
-    else if(checkCommand(SHOUWGROUPS_COMMAND, command)){
-        myAPI->showGroups();
-    }
+        case CommandType::ShowUsersCommand:
+            showUsrCommand(parameters);
+            break;
 
-    //incorrect command
-    else{
-        printf("Incorrect command!\n");
+        case CommandType::ShowGroupsCommand:
+            showGrpCommand(parameters);
+            break;
+
+        case CommandType::ChangeUserPermissionsCommand:
+            chUsrPermCommand(parameters);
+            break;
+        
+        case CommandType::ChangeGroupPermissionsCommand:
+            chGrpPermCommand(parameters);
+            break;
+
+        case CommandType::CreateFileCommand:
+            createFileCommand(parameters);
+            break;
+
+        case CommandType::CopyFileCommand:
+            copyFileCommand(parameters);
+            break;
+
+        case CommandType::MoveFileCommand:
+            moveFileCommand(parameters);
+            break;
+
+        case CommandType::ReadFileCommand:
+            readFileCommand(parameters);
+            break;
+
+        case CommandType::DeleteFileCommand:
+            delFileCommand(parameters);
+            break;
+
+        default:
+            printf("Incorrect command!\n");
+            break;
     }
+    
 }
 
 void ShellProgram::run()
@@ -313,11 +330,170 @@ void ShellProgram::showInstructions()
 {
     printf("\nInstructions for commands:\n");
     printf("%s\t-\tshow instruction\n", INSTRUCTIONS_COMMAND);
-    printf("%s\t<groupname>\t-\tcreate\tgroup\n%s <groupname>\t-\tset group for current user\n", GROUPADD_COMMAND, SETGROUP_COMMAND);
-    printf("%s\t<username>\t-\tdelete\tuser\t(required root privilege)\n", DELETEUSER_COMMAND);
-    printf("%s\t<groupname>\t-\tdelete\tgroup\t(required root privilege)\n", DELETEGROUP_COMMAND);
-    printf("%s\t-\tshow\tall\tusers\n", SHOWUSERS_COMMAND);
-    printf("%s\t-\tshow\tall\tgroups\n", SHOUWGROUPS_COMMAND);
+    printf("%s <groupname>\t-\tcreate group\n%s <groupname>\t-\tset group for current user\n", GROUP_ADD_COMMAND, SET_GROUP_COMMAND);
+    printf("%s <username>\t-\tdeletet user (required root privilege)\n", DELETE_USER_COMMAND);
+    printf("%s <groupname>\t-\tdelete group (required root privilege)\n", DELETE_GROUP_COMMAND);
+    printf("%s <permissions>\t-\tchange permissions for current user\n", CHANGE_USER_PERMISSIONS_COMMAND);
+    printf("%s <permissions>\t-\tchange permissions for current user group\n", CHANGE_GROUP_PERMISSIONS_COMMAND);
+    printf("%s\t-\tshow all users\n", SHOW_USERS_COMMAND);
+    printf("%s\t-\tshow all groups\n", SHOW_GROUPS_COMMAND);
     printf("%s\n%s\n", EXIT_COMMAND, RETURN_COMMAND);
+    printf("%s <filename>\t-\tcreate file\n", CREATE_FILE_COMMAND);
+    printf("%s <filename>\t-\tdelete file\n", DELETE_FILE_COMMAND);
 }
 
+CommandType ShellProgram::selectCommand(const char *command)
+{
+    //add group
+    if(checkCommand(GROUP_ADD_COMMAND, command)){
+        return CommandType::GroupAddCommand;
+    }
+
+    //setgroup
+    else if(checkCommand(SET_GROUP_COMMAND, command)){
+        return CommandType::SetGroupCommand;
+    }
+
+    //delete user
+    else if(checkCommand(DELETE_USER_COMMAND, command)){
+        return CommandType::DeleteUserCommand;
+    }
+
+    //delete group
+    else if(checkCommand(DELETE_GROUP_COMMAND, command)){
+        return CommandType::DeleteGroupCommand;
+    }
+
+    //show users
+    else if(checkCommand(SHOW_USERS_COMMAND, command)){
+        return CommandType::ShowUsersCommand;
+    }
+
+    //show groups
+    else if(checkCommand(SHOW_GROUPS_COMMAND, command)){
+        return CommandType::ShowGroupsCommand;
+    }
+
+    //change user permissions
+    else if(checkCommand(CHANGE_USER_PERMISSIONS_COMMAND, command)){
+        return CommandType::ChangeUserPermissionsCommand;
+    }
+
+    //change group permissions
+    else if(checkCommand(CHANGE_GROUP_PERMISSIONS_COMMAND, command)){
+        return CommandType::ChangeGroupPermissionsCommand;
+    }
+
+    //create file
+    else if(checkCommand(CREATE_FILE_COMMAND, command))
+        return CommandType::CreateFileCommand;
+
+    //copy file
+    else if(checkCommand(COPY_FILE_COMMAND, command))
+        return CommandType::CopyFileCommand;
+
+    //move  file
+    else if(checkCommand(MOVE_FILE_COMMAND, command))
+        return CommandType::MoveFileCommand;
+
+    //read file
+    else if(checkCommand(READ_FILE_COMMAND, command))
+        return CommandType::ReadFileCommand;
+
+    //delete file
+    else if(checkCommand(DELETE_FILE_COMMAND, command))
+        return CommandType::DeleteFileCommand;
+
+    
+
+    return CommandType();
+}
+
+void ShellProgram::grpAddCommand(char *parameters)
+{
+    size_t groupID = myAPI->setGroupID();
+    myAPI->createGroup(parameters, groupID);
+}
+
+void ShellProgram::setGrpCommand(char *parameters)
+{
+    groupID = myAPI->getGroupID(parameters);
+    myAPI->setUserGroup(userID, groupID);
+}
+
+void ShellProgram::chUsrPermCommand(char *parameters)
+{
+    if(checkRootPrivilege()){
+        size_t permissions = atoi(parameters);
+
+        myAPI->changeUserPermissions(userID, permissions);
+    }
+}
+
+void ShellProgram::chGrpPermCommand(char *parameters)
+{
+    if(checkRootPrivilege()){
+        size_t permissions = atoi(parameters);
+        myAPI->changeGroupPermissions(groupID, permissions);
+    }
+}
+
+void ShellProgram::delUsrCommand(char *parameters)
+{
+    if(checkRootPrivilege()){
+        size_t userDeleteID = myAPI->getUserID(parameters);
+        myAPI->deleteUser(userDeleteID);
+    }
+}
+
+void ShellProgram::delGrpCommand(char *parameters)
+{
+    if(checkRootPrivilege()){
+        size_t groupDeleteID = myAPI->getGroupID(parameters);
+        myAPI->deleteGroup(groupDeleteID);
+    }
+}
+
+void ShellProgram::showUsrCommand(char *parameters)
+{
+    myAPI->showUsers();
+}
+
+void ShellProgram::showGrpCommand(char *parameters)
+{
+    myAPI->showGroups();
+}
+
+void ShellProgram::createFileCommand(char *parameters)
+{
+    myAPI->createFile(parameters, userID, groupID, FILE_PERMISSIONS);
+}
+
+void ShellProgram::copyFileCommand(char *parameters)
+{
+
+}
+
+void ShellProgram::moveFileCommand(char *parameters)
+{
+
+}
+
+void ShellProgram::readFileCommand(char *parameters)
+{
+    //declare variables
+    char *data;
+    size_t maxLength = 4960;
+
+    myAPI->readFile(parameters, data, maxLength, 0);
+
+
+    printf("Data read= %s\n", data);
+
+    delete[] data;
+}
+
+void ShellProgram::delFileCommand(char *paramters)
+{
+    myAPI->removeFile(paramters);
+}
