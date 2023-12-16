@@ -1,7 +1,6 @@
-/* #include "../../includes/disk_driver.h" */
 #include "../../includes/shellProgram.h"
 
-#define BLOCKS 30
+#define BLOCKS 1000
 
 int main(){
     Disk *disk = new Disk();

@@ -472,15 +472,21 @@ bool FileSystemAPI::removeFile(const char *filename)
             fprintf(stderr, "File= %s doesn`t exist to delete!\n", filename);
     }
 
-    fprintf(stderr, "User= %s doesn\t have permissions to delete file= %s\n", users[currentUser].username, filename);
+    fprintf(stderr, "User= %s doesn't have permissions to delete file= %s\n", users[currentUser].username, filename);
     return false;
 }
 
 statDetails FileSystemAPI::getFileStat(const char *filename)
 {
     size_t inumber = myFileSystem->getInumber(filename);
+    statDetails stats;
 
-    statDetails stats = myFileSystem->stat(inumber);
+    if(inumber == -1){
+        stats.Valid = 0;
+        return stats;
+    }
+
+    stats = myFileSystem->stat(inumber);
 
     return stats;
 }
@@ -497,12 +503,6 @@ ssize_t FileSystemAPI::readFile(const char *filename, char *data, size_t length,
     size_t totalRead;
     Inode inode = myFileSystem->getInode(inumber);
 
-    //see if exceeds the limit
-    if((length + offset) >= inode.Size){
-        length = inode.Size - offset;
-    }
-
-    data = new char[length  + 1]{};
 
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
@@ -576,6 +576,19 @@ void FileSystemAPI::showGroups()
                 printf("do not have users!\n");
         }
     }
+}
+
+void FileSystemAPI::showFiles()
+{
+    SuperBlock *auxSuperBlock = reinterpret_cast<SuperBlock*>(myFileSystem->getSuperBlock());
+    Inode *inodes = reinterpret_cast<Inode*>(myFileSystem->getInodeBlocks());
+
+    for(int i = 0; i < auxSuperBlock->Inodes; i ++){
+        if(inodes[i].Valid){
+            printf("File= %s\tOwner= %d\tGroup= %d\tSize= %d\tPermissions= %o\n", inodes[i].Filename, inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Size, inodes[i].Permissions);
+        }
+    }
+
 }
 
 bool FileSystemAPI::changeUserPermissions(uint32_t userID, uint32_t permissions)
@@ -762,7 +775,7 @@ void FileSystemAPI::readGroupsFile(const char *token, int index)
     token2 = strtok(NULL, ":\n");
 
     //take group permissions
-    printf("group permissions= %d", atoi(token2));
+    printf("group permissions= %d\n", atoi(token2));
     groups[index].permissions = atoi(token2);
 
     //set bitmap for group
@@ -961,6 +974,18 @@ uint32_t FileSystemAPI::getCurrentGroupID()
     }
 
     return users[currentUser].groupID;
+}
+
+uint32_t FileSystemAPI::getSizeInode(const char *filename)
+{
+    size_t inumber = myFileSystem->getInumber(filename);
+    
+    if(inumber == -1)
+        return 0;
+
+    Inode inode = myFileSystem->getInode(inumber);
+
+    return inode.Size;
 }
 
 uint32_t FileSystemAPI::setUserID()
