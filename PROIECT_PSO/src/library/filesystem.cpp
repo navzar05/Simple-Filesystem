@@ -1,4 +1,4 @@
-#include "../../includes/filesystem.h"
+#include "filesystem.h"
 
 uint32_t FileSystem::INODES_PER_BLOCK = 0;
 uint32_t FileSystem::POINTERS_PER_INODE = 0;
@@ -28,7 +28,7 @@ size_t FileSystem::ceilDiv(size_t a, size_t b)
     return (a / b) + ((a % b) != 0);
 }
 
-bool FileSystem::loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+int FileSystem::loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     if (start_blk > 5) {
         loadIndirectPages(start, inumber, inodeBlocks, start_blk, end_blk);
@@ -42,7 +42,7 @@ bool FileSystem::loadPages(char *start, size_t inumber, Inode *inodeBlocks, size
     }
     return 0;
 }
-bool FileSystem::loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+int FileSystem::loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     size_t block_index = 0;
     char *auxBlock = new char[Disk::BLOCK_SIZE];
@@ -65,7 +65,7 @@ bool FileSystem::loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks
     return 0;
 }
 
-bool FileSystem::loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+int FileSystem::loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     printf("load indirect");
     char *auxBlockPointers = new char[Disk::BLOCK_SIZE]; //pointer pentru blocul cu pointeri
@@ -98,7 +98,7 @@ bool FileSystem::loadIndirectPages(char *start, size_t inumber, Inode *inodeBloc
     return 0;
 }
 
-bool FileSystem::saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+int FileSystem::saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     size_t block_index = 0;
     for (int j = start_blk; j <= end_blk; j ++, block_index++)
@@ -107,7 +107,7 @@ bool FileSystem::saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks
     //printf("Direct blocks saved.\n");
     return 0;
 }
-bool FileSystem::saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+int FileSystem::saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     char *auxBlockPointers = new char[Disk::BLOCK_SIZE]; //pointer pentru blocul cu pointeri
     mountedDisk->so_read(inodeBlocks[inumber].Indirect, auxBlockPointers, Disk::BLOCK_SIZE);
@@ -123,7 +123,8 @@ bool FileSystem::saveIndirectPages(char *start, size_t inumber, Inode *inodeBloc
     //printf("Indirect blocks saved.\n");
     return 0;
 }
-bool FileSystem::savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
+
+int FileSystem::savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk)
 {
     if (start_blk > 5) {
         saveIndirectPages(start, inumber, inodeBlocks, start_blk, end_blk);
@@ -138,7 +139,7 @@ bool FileSystem::savePages(char *start, size_t inumber, Inode *inodeBlocks, size
     return 0;
 }
 
-bool FileSystem::allocBlock(uint32_t *pointer)
+int FileSystem::allocBlock(uint32_t *pointer)
 {
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(FileSystem::superBlock);
     //printf("number of blocks from allocBlock: %ld\n", auxSuperBlock->Blocks);
@@ -162,7 +163,7 @@ size_t FileSystem::getInodeBlockFromInumber(size_t inumber)
         else
             return FileSystem::ceilDiv(inumber, FileSystem::INODES_PER_BLOCK - 1);
 }
-bool FileSystem::initBitmap(const Inode* inodeBlock)
+int FileSystem::initBitmap(const Inode* inodeBlock)
 {
 
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(FileSystem::superBlock);
@@ -194,6 +195,39 @@ bool FileSystem::initBitmap(const Inode* inodeBlock)
     }
     return 0;
 
+}
+
+int FileSystem::ilock(size_t inumber)
+{
+        struct flock lock;
+
+        memset(&lock, 0, sizeof(struct flock));
+        lock.l_type = F_WRLCK;
+        lock.l_whence = SEEK_SET;
+        lock.l_start = (Disk::BLOCK_SIZE) + (sizeof(Inode) * inumber);
+        lock.l_len = sizeof(Inode);
+
+        fcntl(mountedDisk->descriptor, F_SETLKW, &lock);
+
+        printf("Locked the inode <%ld>\n", inumber);
+
+        return 0;
+}
+int FileSystem::iunlock(size_t inumber)
+{
+        struct flock lock;
+
+        memset(&lock, 0, sizeof(struct flock));
+        lock.l_type = F_UNLCK;
+        lock.l_whence = SEEK_SET;
+        lock.l_start = (Disk::BLOCK_SIZE) + (sizeof(Inode) * inumber);
+        lock.l_len = sizeof(Inode);
+
+        fcntl(mountedDisk->descriptor, F_SETLK, &lock);
+
+        printf("Unlocked the inode <%ld>\n", inumber);
+
+        return 0;
 }
 
 FileSystem::FileSystem(Disk *disk)
@@ -229,7 +263,7 @@ void FileSystem::debug(Disk *disk)
     char* auxInodeBlock = new char[Disk::BLOCK_SIZE]{};
     if (auxBlock->MagicNumber != MAGIC_NUMBER)
     {
-            fprintf(stderr, "Disk is not formated. Bad magic number: it is %d not %d.\n", auxBlock->MagicNumber, MAGIC_NUMBER);
+            fprintf(stderr, "Disk is not formated. Bad magic number: it is %d not %d.\n", (int)auxBlock->MagicNumber, MAGIC_NUMBER);
             return;
     }
     else{
@@ -249,8 +283,13 @@ void FileSystem::debug(Disk *disk)
     }
 }
 
-bool FileSystem::format(Disk *disk)
+int FileSystem::format(Disk *disk)
 {
+    if (flock(disk->descriptor, LOCK_EX) != 0) {
+            printf("Cannot lock file %d.\n", mountedDisk->descriptor);
+            return -1;
+    }
+
     //clear all data
     printf("Formating disk...\n");
     ftruncate(disk->descriptor, 0);
@@ -276,14 +315,24 @@ bool FileSystem::format(Disk *disk)
 
     printf("Disk formated\n");
 
+    flock(mountedDisk->descriptor, LOCK_UN);
+
+    return 0;
 }
 
-bool FileSystem::mount(Disk *disk)
+int FileSystem::mount(Disk *disk)
 {
+
     if (disk->mounted) {
         fprintf(stderr, "A file system already mounted.\n");
         return false;
     }
+
+    if (flock(disk->descriptor, LOCK_EX) != 0) {
+        printf("Cannot lock file %d.\n", mountedDisk->descriptor);
+        return -1;
+    }
+
     if (disk->so_read(0, superBlock, Disk::BLOCK_SIZE) < 0) {
         fprintf(stderr, "Error on reading superblock.\n");
         return false;
@@ -303,7 +352,7 @@ bool FileSystem::mount(Disk *disk)
 
     //read are limita, de reimplementat citire in chunck-uri
     for (int i = 1; i <= auxSuperBlock->InodeBlocks; i ++) {
-        printf("\treading i-node block <%ld>\n", i - 1);
+        //printf("\treading i-node block <%ld>\n", i - 1);
         disk->so_read(i, FileSystem::inodeBlocks + ((i - 1) * Disk::BLOCK_SIZE), Disk::BLOCK_SIZE);
     }
 
@@ -315,14 +364,21 @@ bool FileSystem::mount(Disk *disk)
 
     printf("Filesystem mounted.\n");
 
+    flock(disk->descriptor, LOCK_UN);
+
     return true;
 }
 
-bool FileSystem::unmount(Disk *disk)
+int FileSystem::unmount(Disk *disk)
 {
     if (disk->mounted == 0) {
         printf("FS already unmounted.\n");
         return 0;
+    }
+
+    if (flock(disk->descriptor, LOCK_EX) != 0) {
+        printf("Cannot lock file %d.\n", disk->descriptor);
+        return -1;
     }
 
     SuperBlock* auxSuperBlock = reinterpret_cast<SuperBlock*>(superBlock);
@@ -333,7 +389,6 @@ bool FileSystem::unmount(Disk *disk)
 
     printf("Saving i-nodes...\n");
     for (int i = 1; i <= auxSuperBlock->InodeBlocks; i ++) {
-        printf("\tSaving inode block %d\n", i - 1);
         disk->so_write(i, FileSystem::inodeBlocks + ((i - 1) * Disk::BLOCK_SIZE), Disk::BLOCK_SIZE);
     }
 
@@ -342,6 +397,9 @@ bool FileSystem::unmount(Disk *disk)
     FileSystem::mountedDisk = nullptr;
 
     printf("File system unmounted.\n");
+
+    flock(disk->descriptor, LOCK_UN);
+
     return 0;
 }
 
@@ -378,9 +436,8 @@ int FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _Ow
         return -1;
     }
 
-
-
     Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+
     for (int i = 0; i < this->totalInodes; i++) {
 
         if (inodes[i].Valid && !strcmp(inodes[i].Filename, filename)) {
@@ -388,6 +445,9 @@ int FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _Ow
         }
 
         if (!inodes[i].Valid) {
+
+            ilock(i);
+
             inodes[i].Valid = 1;
             inodes[i].Size = 0;
 
@@ -409,6 +469,8 @@ int FileSystem::create(const char *filename, uint32_t _OwnerUserID, uint32_t _Ow
             mountedDisk->so_write(FileSystem::getInodeBlockFromInumber(i), FileSystem::inodeBlocks + (FileSystem::getInodeBlockFromInumber(i) - 1) * Disk::BLOCK_SIZE, Disk::BLOCK_SIZE);
 
             printf("Inode with inumber= %d filename= %s valid= %d size= %d  userID= %d groupID= %d permissions= %d created.\n", i, inodes[i].Filename, inodes[i].Valid, inodes[i].Size,inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Permissions );
+
+            iunlock(i);
 
             return i;
         }
@@ -433,14 +495,14 @@ int FileSystem::remove(size_t inumber)
         return -1;
     }
 
+    ilock(inumber);
+
     //Free direct blocks
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (inodes[inumber].Direct[i]) {
             bitmap[inodes[inumber].Direct[i]] = 0;
         }
     }
-
-    delete[] inodes[inumber].Direct;
 
     //Handle indirect blocks
     if (inodes[inumber].Indirect != 0) {
@@ -466,6 +528,8 @@ int FileSystem::remove(size_t inumber)
     inodes[inumber].Size = 0;
 
     mountedDisk->so_write(FileSystem::getInodeBlockFromInumber(inumber), FileSystem::inodeBlocks + (FileSystem::getInodeBlockFromInumber(inumber) - 1) * Disk::BLOCK_SIZE, Disk::BLOCK_SIZE);
+
+    iunlock(inumber);
 
     return 1;
 }
@@ -509,6 +573,8 @@ size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t off
         return -1;
     }
 
+    ilock(inumber);
+
     //number of blocks ocuppied by the file to be read
     size_t blocks_of_file = FileSystem::ceilDiv(auxInodeBlocks[inumber].Size, Disk::BLOCK_SIZE);
 
@@ -532,6 +598,8 @@ size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t off
 
     munmap(start, (maxblock - minblock + 1) * Disk::BLOCK_SIZE);
 
+    iunlock(inumber);
+
     return length;
 }
 
@@ -544,6 +612,8 @@ size_t FileSystem::fs_write(size_t inumber, const char *data, size_t length, siz
         fprintf(stderr, "Error on filesystem write. I-node invalid <%ld>.\n", inumber);
         return -1;
     }
+
+    ilock(inumber);
 
     printf("offset %ld\n", offset);
     size_t minblock = FileSystem::floorDiv(offset, Disk::BLOCK_SIZE);
@@ -572,6 +642,8 @@ size_t FileSystem::fs_write(size_t inumber, const char *data, size_t length, siz
 
     //saving on disk
     mountedDisk->so_write(FileSystem::getInodeBlockFromInumber(inumber), FileSystem::inodeBlocks + (FileSystem::getInodeBlockFromInumber(inumber) - 1) * Disk::BLOCK_SIZE, Disk::BLOCK_SIZE);
+
+    iunlock(inumber);
 
     return length;
 }

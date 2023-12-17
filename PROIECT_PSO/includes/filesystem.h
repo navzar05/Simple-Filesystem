@@ -1,7 +1,6 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-#include <sys/mman.h>
 #include "disk_driver.h"
 
 const static uint32_t MAX_FILENAME_LENGTH = 100 - 16; //de la pointer
@@ -55,27 +54,28 @@ private:
     static size_t floorDiv(size_t a, size_t b);
     static size_t ceilDiv(size_t a, size_t b);
 
-    static bool loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-    static bool loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-    static bool loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-
-    static bool savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-    static bool saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-    static bool saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
-    static size_t getStartOfDataBlocks(); // Intoarce indexul primului bloc de date din File System.
-    static bool allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
+    static int loadPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int loadDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int loadIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int savePages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int saveDirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int saveIndirectPages(char *start, size_t inumber, Inode *inodeBlocks, size_t start_blk, size_t end_blk);
+    static int allocBlock(uint32_t *pointer); //Cauta primul bloc gol si seteaza valoarea lui pointer cu indexul lui.
 
     static size_t getInodeBlockFromInumber(size_t inumber);
-    static bool initBitmap(const Inode* inodeBlock);
+    static int initBitmap(const Inode* inodeBlock);
+
+    int ilock(size_t inumber);
+    int iunlock(size_t inumber);
 public:
     FileSystem(Disk *disk);
     ~FileSystem();
 
     static void debug(Disk *disk);
-    static bool format(Disk *disk);
+    static int format(Disk *disk);
 
-    static bool mount(Disk *disk);
-    static bool unmount(Disk *disk);
+    static int mount(Disk *disk);
+    static int unmount(Disk *disk);
     size_t getInumber(const char *filename);
     Inode getInode(size_t inumber);
 

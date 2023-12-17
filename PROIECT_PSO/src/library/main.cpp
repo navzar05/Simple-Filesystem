@@ -15,8 +15,7 @@ int main(){
 
     ShellProgram::destroyInstance();
 
-    /*
-    char* block1 = new char[Disk::BLOCK_SIZE];
+/*     char* block1 = new char[Disk::BLOCK_SIZE];
     char buffer[1024] = { 0 };
     FileSystem *fs = new FileSystem(disk);
     FileSystem::format(disk);
@@ -24,15 +23,16 @@ int main(){
     printf("\nUnmount test:\n");
     FileSystem::unmount(disk);
 
+
     printf("\nMount test:\n");
     FileSystem::mount(disk);
 
-    printf("\nDebug function test:\n");
-    FileSystem::debug(disk);
+   /*  printf("\nDebug function test:\n");
+    FileSystem::debug(disk); 
 
-    printf("Size of Inode: %d\n", sizeof(Inode));
+    // printf("Size of Inode: %d\n", sizeof(Inode));
 
-    printf("\nso_read() function test on superblock:\n");
+     printf("\nso_read() function test on superblock:\n");
     disk->so_read(0, block1);
     SuperBlock* auxBlock1 = reinterpret_cast<SuperBlock*>(block1);
     printf("Read from file:%x %d %d %d\n", auxBlock1->MagicNumber, auxBlock1->Blocks, auxBlock1->InodeBlocks, auxBlock1->Inodes);
@@ -42,6 +42,8 @@ int main(){
     fs->fs_write(testInode, "Ana are mere", sizeof("Ana are mere"), 0);
 
     fs->fs_read(0, buffer, 1024, 0);
+
+    printf("Data read: %s\n", buffer);
 
     size_t testInode1 = fs->create("sefu1.txt",1,1, 0666);
 
@@ -53,11 +55,11 @@ int main(){
 
     delete fs;
 
-    delete[] block1;
+    delete[] block1; */
 
     //FileSystemAPI tests
 
-    printf("\n\n Tests on fileSystemAPI\n\n");
+    /* printf("\n\n Tests on fileSystemAPI\n\n");
 
     fileSystemAPI* fsAPI = fileSystemAPI::getInstance(disk, 30);
 
@@ -95,8 +97,8 @@ int main(){
     fileSystemAPI::destroyInstance();
 
     printf("Final data: %s", data2);
+ */
 
-    */
-    
+
     return 0;
 }

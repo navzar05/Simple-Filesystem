@@ -2,12 +2,13 @@
 #define DISK_H
 
 #include <stdio.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/file.h>
 
 
 struct Disk {
