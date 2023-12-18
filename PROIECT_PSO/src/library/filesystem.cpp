@@ -563,6 +563,15 @@ char *FileSystem::getInodeBlocks()
     return inodeBlocks;
 }
 
+bool FileSystem::setFilePermissions(size_t inumber, uint32_t permissions)
+{
+    Inode *inodes = reinterpret_cast<Inode*>(inodeBlocks);
+
+    inodes[inumber].Permissions = permissions;
+
+    return true;;
+}
+
 size_t FileSystem::fs_read(size_t inumber, char *data, size_t length, size_t offset)
 {
     Inode *auxInodeBlocks = reinterpret_cast<Inode*>(inodeBlocks);

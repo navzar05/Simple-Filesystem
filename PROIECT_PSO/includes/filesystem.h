@@ -86,6 +86,8 @@ public:
     char *getSuperBlock();
     char *getInodeBlocks();
 
+    bool setFilePermissions(size_t inumber, uint32_t permissions);
+
     size_t fs_read(size_t inumber, char *data, size_t length, size_t offset);
     size_t fs_write(size_t inumber, const char *data, size_t length, size_t offset);
 };

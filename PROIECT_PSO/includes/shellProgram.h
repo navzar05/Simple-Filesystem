@@ -2,7 +2,7 @@
 #include "termios.h"
 
 #define COMMAND_LENGTH 50
-#define LENGTH 20
+#define LENGTH 50
 #define FILE_PERMISSIONS 0644
 
 #define DOMAIN_NAME "Legendary"
@@ -25,6 +25,7 @@
 #define CREATE_FILE_COMMAND "touch"
 #define COPY_IN_COMMAND "copyin"
 #define COPY_OUT_COMMAND "copyout"
+#define COPY_COMMAND "cp"
 #define READ_FILE_COMMAND "cat"
 #define DELETE_FILE_COMMAND "rm"
 
@@ -34,6 +35,7 @@
 
 #define ALL_FILES_COMMAND "ls"
 #define ONE_FILE_COMMAND "stat"
+#define CHG_PERM_FILE_COMMAND "chmod"
 
 enum class CommandType{
     GroupAddCommand,
@@ -47,6 +49,7 @@ enum class CommandType{
     CreateFileCommand,
     CopyInCommand,
     CopyOutCommand,
+    CopyCommand,
     ReadFileCommand,
     DeleteFileCommand,
     FormatCommand,
@@ -54,9 +57,9 @@ enum class CommandType{
     UnmountCommand,
     IncorrectCommand,
     AllFilesCommand,
-    OneFileCommand
+    OneFileCommand,
+    ChgFilePermCommand
 };
-
 
 class ShellProgram{
 public:
@@ -92,6 +95,7 @@ private:
 
     void prepareCommands();
     void executeCommands(char *line);
+    CommandType selectCommand(const char *command);
 
     void turnOffEcho();
     void turnOnEcho();
@@ -99,7 +103,6 @@ private:
 
     void fflushInputBuffer();
     void showInstructions();
-    CommandType selectCommand(const char *command);
 
     void grpAddCommand(char *parameters);
     void setGrpCommand(char *parameters);
@@ -112,6 +115,7 @@ private:
     void createFileCommand(char *parameters);
     void copyInCommand(char *parameters);
     void copyOutCommand(char *parameters);
+    void copyCommand(char *parameters);
     void readFileCommand(char *parameters);
     void delFileCommand(char *parameters);
     void formatCommand();
@@ -119,4 +123,5 @@ private:
     void unmountCommand();
     void showAllFilesCommand();
     void showOneFileCommand(char *parameters);
+    void chgFilePermCommand(char *parameters);
 };

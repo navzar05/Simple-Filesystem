@@ -33,9 +33,9 @@ FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
     if(!mountFileSystem())
         formatFileSystem();
 
-    //create imporant files
+    //create important files
     createFile(USERS_FILE, 1, 1, 0644);
-    createFile(PASSWORDS_FILE, 1, 1, 0644);
+    createFile(PASSWORDS_FILE, 1, 1, 0600);
     createFile(GROUPS_FILE, 1, 1, 0644);
 
     //read if was data before start the File System
@@ -59,12 +59,11 @@ FileSystemAPI::~FileSystemAPI()
     writeImportantFile(GROUPS_FILE);
 
     //unmount and delete
-    unmountFileSystem();
     delete[] this->users;
     delete[] this->groups;
     delete[] this->bitmapUsers;
     delete[] this->bitmapGroups;
-    //delete this->myFileSystem;
+    delete this->myFileSystem;
 }
 
 bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
@@ -92,7 +91,7 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     }
 
     //has the same group
-    else if(inode.OwnerGroupID == users[currentUser].groupID){
+    else if(inode.OwnerGroupID != 0 && inode.OwnerGroupID == users[currentUser].groupID){
 
         // select group permissions and shif 3 bytes
         mask = 0070;
@@ -108,7 +107,7 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
 
     //none of them
     else  {
-
+        
         //select other permissions
         mask = 0007;
         tmp = (mask & inode.Permissions);
@@ -120,7 +119,7 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     if((tmp & permissions) == mode)
         return true;
 
-    fprintf(stderr, "User= %s can't do mode= %d on file= %s\n", users[currentUser].username, mode, filename);
+    fprintf(stderr, "User= %s doesn't have permissions for mode= %d on file= %s\n", users[currentUser].username, mode, filename);
     return false;
 }
 
@@ -409,16 +408,10 @@ bool FileSystemAPI::setFilePermissions(const char *filename, uint32_t permission
 
     if(inumber == -1)
         return false;
-
-    Inode inode = myFileSystem->getInode(inumber);
-
-    //only the owner can change the permissions
-    if(users[currentUser].userID == inode.OwnerUserID){
-        inode.Permissions = permissions;
+    
+    if(myFileSystem->setFilePermissions(inumber, permissions))
         return true;
-    }
 
-    fprintf(stderr, "User with id= %d doesn't have permissions for file= %s \n", users[currentUser].userID, inode.Filename);
     return false;
 }
 
@@ -448,8 +441,9 @@ bool FileSystemAPI::formatFileSystem()
 ssize_t FileSystemAPI::createFile(const char *filename, uint32_t ownerUserID, uint32_t ownerGroupID, uint32_t permissions)
 {
     printf("Enter createFile()!\n");
-    size_t ret;
+    size_t ret = 0;
 
+    
     ret = myFileSystem->create(filename, ownerUserID, ownerGroupID, permissions);
 
     return ret;
@@ -503,12 +497,11 @@ ssize_t FileSystemAPI::readFile(const char *filename, char *data, size_t length,
     size_t totalRead;
     Inode inode = myFileSystem->getInode(inumber);
 
-
     //read if has permissions
     if(hasPermissions(filename, READ_PERMISSION))
         totalRead = myFileSystem->fs_read(inumber, data, length, offset);
 
-    printf("totalRead= %d and data is: %s", totalRead, data);
+    //printf("totalRead= %d and data is: %s", totalRead, data);
 
     return totalRead;
 }
@@ -585,7 +578,7 @@ void FileSystemAPI::showFiles()
 
     for(int i = 0; i < auxSuperBlock->Inodes; i ++){
         if(inodes[i].Valid){
-            printf("File= %s\tOwner= %d\tGroup= %d\tSize= %d\tPermissions= %o\n", inodes[i].Filename, inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Size, inodes[i].Permissions);
+            printf("%s\t%d\t%d\t%d\t%o\n", inodes[i].Filename, inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Size, inodes[i].Permissions);
         }
     }
 

@@ -1,10 +1,11 @@
 #include "../../includes/shellProgram.h"
 
 #define BLOCKS 1000
+#define FILE_DISK "./bin/file.txt"
 
 int main(){
     Disk *disk = new Disk();
-    disk->disk_open("./bin/file.txt", BLOCKS);
+    disk->disk_open(FILE_DISK, BLOCKS);
 
     //shell tests
     printf("\n Shell tests!\n\n");
