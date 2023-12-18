@@ -48,7 +48,7 @@ void ShellProgram::destroyInstance()
 
 void ShellProgram::createAccount()
 {
-    char *confirmPassword = new char[LENGTH + 1]{};
+    char *confirmPassword = new char[LENGTH]{};
 
     //create an account
     printf("> Create an account!\n");
@@ -63,7 +63,7 @@ void ShellProgram::createAccount()
     printf("> Create password: ");
     readPassword(confirmPassword);
 
-    memcpy(password, confirmPassword, sizeof(password));
+    memcpy(password, confirmPassword, strlen(confirmPassword) + 1);
     memset(confirmPassword, '\0', strlen(confirmPassword));
 
     //rewrite
@@ -276,6 +276,11 @@ void ShellProgram::executeCommands(char *line)
             copyOutCommand(parameters);
             break;
 
+        //copy from emulator to emulator
+        case CommandType::CopyCommand:
+            copyCommand(parameters);
+            break;
+
         //read file
         case CommandType::ReadFileCommand:
             readFileCommand(parameters);
@@ -306,8 +311,14 @@ void ShellProgram::executeCommands(char *line)
             showAllFilesCommand();
             break;
 
+        //show one file stats
         case CommandType::OneFileCommand:
             showOneFileCommand(parameters);
+            break;
+
+        //change file permissionss
+        case CommandType::ChgFilePermCommand:
+            chgFilePermCommand(parameters);
             break;
 
         //incorrect command
@@ -400,6 +411,10 @@ CommandType ShellProgram::selectCommand(const char *command)
     else if(checkCommand(COPY_OUT_COMMAND, command))
         return CommandType::CopyOutCommand;
 
+    //copy from emulator to emulator
+    else if(checkCommand(COPY_COMMAND, command))
+        return CommandType::CopyCommand;
+
     //read file
     else if(checkCommand(READ_FILE_COMMAND, command))
         return CommandType::ReadFileCommand;
@@ -427,6 +442,10 @@ CommandType ShellProgram::selectCommand(const char *command)
     //show one file stats
     else if(checkCommand(ONE_FILE_COMMAND, command))
         return CommandType::OneFileCommand;
+
+    //change file permissions
+    else if(checkCommand(CHG_PERM_FILE_COMMAND, command))
+        return CommandType::ChgFilePermCommand;
 
     else
         return CommandType::IncorrectCommand;
@@ -496,21 +515,22 @@ void ShellProgram::copyInCommand(char *parameters)
 {
     //declare and initialise src and dest
     size_t bytesRead, bytesToRead = 4096, offset = 0;
-    char *src, *dst, *data;
+    char *src, *dst;
+    char data[Disk::BLOCK_SIZE + 1];
 
+    //set source
     src = new char[strlen(parameters) + 1]{};
     memcpy(src, parameters, strlen(parameters) + 1);
 
-    printf("Token= %s\n", parameters);
     parameters = strtok(NULL, " \n");
-    printf("Token= %s\n", parameters);
-
+    
     if(parameters == NULL){
         fprintf(stderr, "Incorrect parameters!\n");
         delete[] src;
         return;
     }
 
+    //set destination
     dst = new char[strlen(parameters) + 1]{};
     memcpy(dst, parameters, strlen(parameters) + 1);
     
@@ -521,12 +541,12 @@ void ShellProgram::copyInCommand(char *parameters)
         return;
     }
 
-    data = new char[bytesToRead + 1]{};
-
     //read all from file on disk and write it on emulator
     while(!ferror(f) && !feof(f)){
-        bytesRead = fread(data, sizeof(char), bytesToRead, f);
+        
+        memset(data, '\0', Disk::BLOCK_SIZE + 1);
 
+        bytesRead = fread(data, sizeof(char), bytesToRead, f);
         myAPI->writeFile(dst, data, bytesRead, offset);
 
         offset += bytesRead;
@@ -536,38 +556,39 @@ void ShellProgram::copyInCommand(char *parameters)
 
     delete[] src;
     delete[] dst;
-    delete[] data;
 }
 
 void ShellProgram::copyOutCommand(char *parameters)
 {
+    //declare and initialise variables
     size_t byteRead, bytesToRead = 4096, offset = 0, size; 
     char *src, *dst;
     char data[Disk::BLOCK_SIZE + 1];
 
+    //set source
     src = new char[strlen(parameters) + 1]{};
     memcpy(src, parameters, strlen(parameters) + 1);
 
-    printf("Token= %s\n", parameters);
     parameters = strtok(NULL, " \n");
-    printf("Token= %s\n", parameters);
-
+    
+    //check has destination
     if(parameters == NULL){
         fprintf(stderr, "Incorrect parameters!\n");
         delete[] src;
         return;
     }
 
+    //set destination
     dst = new char[strlen(parameters) + 1]{};
     memcpy(dst, parameters, strlen(parameters) + 1);
-
+    
+    //get size
     size = myAPI->getSizeInode(src);
-
     if(size == 0)
         return;
 
+    //open to write in
     FILE *f = fopen(dst, "w");
-
     if(f == NULL){
         fprintf(stderr, "Error on opening file= %s\n", dst);
         return;
@@ -576,10 +597,11 @@ void ShellProgram::copyOutCommand(char *parameters)
     while(size > offset){
 
         memset(data, '\0', Disk::BLOCK_SIZE + 1);
-        byteRead = myAPI->readFile(src, data, bytesToRead, offset);
-        offset += byteRead;
 
+        byteRead = myAPI->readFile(src, data, bytesToRead, offset);
         fprintf(f, "%s", data);
+
+        offset += byteRead;
     }
 
     fclose(f);
@@ -589,11 +611,59 @@ void ShellProgram::copyOutCommand(char *parameters)
 
 }
 
+void ShellProgram::copyCommand(char *parameters)
+{
+    //declare and initialise variables
+    size_t byteRead, bytesToRead = 4096, offset = 0, size; 
+    char *src, *dst;
+    char data[Disk::BLOCK_SIZE + 1];
+
+    //set source
+    src = new char[strlen(parameters) + 1]{};
+    memcpy(src, parameters, strlen(parameters) + 1);
+
+    parameters = strtok(NULL, " \n");
+    
+    if(parameters == NULL){
+        fprintf(stderr, "Incorrect parameters!\n");
+        delete[] src;
+        return;
+    }
+
+    //set destination
+    dst = new char[strlen(parameters) + 1]{};
+    memcpy(dst, parameters, strlen(parameters) + 1);
+
+    //get size
+    size = myAPI->getSizeInode(src);
+    if(size == 0)
+        return;
+
+    //copy from a inode to another
+    while(size > offset){
+
+        memset(data, '\0', Disk::BLOCK_SIZE + 1);
+
+        byteRead = myAPI->readFile(src, data, byteRead, offset);
+        byteRead = myAPI->writeFile(dst, data, bytesToRead, offset);
+
+        offset += byteRead;
+    }
+
+    delete[] src;
+    delete[] dst;
+}
+
 void ShellProgram::readFileCommand(char *parameters)
 {
     //declare variables
     char data[Disk::BLOCK_SIZE + 1];
     size_t bytesRead, bytesToRead = 4096, size, offsset = 0;
+
+    if(strncmp(PASSWORDS_FILE, parameters, (strlen(parameters) + 1)) == 0){
+        if(!checkRootPrivilege())
+            return;
+    }
 
     //set size
     size = myAPI->getSizeInode(parameters);
@@ -651,7 +721,44 @@ void ShellProgram::showOneFileCommand(char *parameters)
     if(!fileStats.Valid)
         return;
 
-    printf("File= %s\tOwner= %d\tGroup= %d\tSize= %d\tPermissions= %o\n", fileStats.Filename, fileStats.OwnerUserID, fileStats.OwnerGroupID, fileStats.Size, fileStats.Permissions);
+    printf("%s\t%d\t%d\t%d\t%o\n", fileStats.Filename, fileStats.OwnerUserID, fileStats.OwnerGroupID, fileStats.Size, fileStats.Permissions);
+}
+
+void ShellProgram::chgFilePermCommand(char *parameters)
+{
+    uint32_t permissions;
+    char *filename;
+    char *convertPointer;
+
+    filename = new char[strlen(parameters) + 1]{};
+
+    memcpy(filename, parameters, (strlen(parameters) + 1));
+
+    parameters = strtok(NULL, " \n");
+
+    if(parameters == NULL){
+        fprintf(stderr, "Incorrect parameters!\n");
+        delete[] filename;
+        return;
+    }
+
+    permissions = strtol(parameters, &convertPointer, 8);
+
+    if( (*convertPointer) != '\0'){
+        fprintf(stderr, "Failed to convert in octal!\n");
+        delete[] filename;
+    }
+
+    if(permissions > 0777){
+        fprintf(stderr, "Wrong permissions given!\n");
+        delete[] filename;
+        return;
+    }
+
+    if(checkRootPrivilege())
+        myAPI->setFilePermissions(filename, permissions);
+
+    delete[] filename;
 }
 
 void ShellProgram::turnOffEcho()
@@ -663,7 +770,8 @@ void ShellProgram::turnOffEcho()
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 }
 
-void ShellProgram::turnOnEcho() {
+void ShellProgram::turnOnEcho() 
+{
     struct termios oldt, newt;
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
@@ -671,7 +779,8 @@ void ShellProgram::turnOnEcho() {
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 }
 
-void ShellProgram::readPassword(char *pswd) {
+void ShellProgram::readPassword(char *pswd) 
+{
     turnOffEcho(); // Turn off echo while reading password
     
     if(fgets(pswd, LENGTH, stdin) != NULL){
@@ -696,6 +805,7 @@ void ShellProgram::fflushInputBuffer()
 void ShellProgram::showInstructions()
 {
     printf("\nInstructions for commands:\n");
+
     printf("%s\t-\tshow instruction\n", INSTRUCTIONS_COMMAND);
     printf("%s\t-\tshow all users\n", SHOW_USERS_COMMAND);
     printf("%s\t-\tshow all groups\n", SHOW_GROUPS_COMMAND);
@@ -706,15 +816,17 @@ void ShellProgram::showInstructions()
     printf("%s\t-\treturn to start menu\n", RETURN_COMMAND);
     printf("%s\t-\texit from application\n", EXIT_COMMAND);
 
+    printf("%s <filename>\t-\tprint file\n", READ_FILE_COMMAND);
     printf("%s <filename>\t-\tshow file's stats\n", ONE_FILE_COMMAND);
     printf("%s <groupname>\t-\tcreate group\n%s <groupname>\t-\tset group for current user\n", GROUP_ADD_COMMAND, SET_GROUP_COMMAND);
     printf("%s <username>\t-\tdeletet user (required root privilege)\n", DELETE_USER_COMMAND);
     printf("%s <groupname>\t-\tdelete group (required root privilege)\n", DELETE_GROUP_COMMAND);
     printf("%s <permissions>\t-\tchange permissions for current user\n", CHANGE_USER_PERMISSIONS_COMMAND);
-    printf("%s <permissions>\t-\tchange permissions for current user group\n", CHANGE_GROUP_PERMISSIONS_COMMAND);
+    printf("%s <permissions>\t-\tchange permissions for current user's group\n", CHANGE_GROUP_PERMISSIONS_COMMAND);
     printf("%s <filename>\t-\tcreate file\n", CREATE_FILE_COMMAND);
     printf("%s <filename>\t-\tdelete file\n", DELETE_FILE_COMMAND);
     
     printf("%s <src> <dest>\t-\tcopy from disk to emulator\n", COPY_IN_COMMAND);
     printf("%s <src> <dest>\t-\tcopy from emulator to disk\n", COPY_OUT_COMMAND);
+    printf("%s <src> <dest>\t-\tcopy from emulator to emulator\n", COPY_COMMAND);
 }

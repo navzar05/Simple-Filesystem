@@ -56,8 +56,6 @@ private:
     static bool *bitmapUsers;
     static bool *bitmapGroups;
 
-    bool hasPermissions(const char *filename, uint32_t mode);
-
     void readImportantFile(const char *filename);
     void readUsersFile(const char *token, int index);
     void readPassswordsFile(const char *token, int index);
@@ -88,6 +86,7 @@ public:
     bool unmountFileSystem();
     bool formatFileSystem();
 
+    bool hasPermissions(const char *filename, uint32_t mode);
     bool checkCredentials(const char *username, const char *password);
     bool setCurrentUser(uint32_t userID);
     uint32_t setUserID();
