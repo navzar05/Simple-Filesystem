@@ -90,10 +90,14 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         permissions = (users[currentUser].permissions & mode);
     }
 
-    //has the same group
-    else if(inode.OwnerGroupID != 0 && inode.OwnerGroupID == users[currentUser].groupID){
+    //user has  permission for mode
+    if((tmp & permissions) == mode)
+        return true;
 
-        // select group permissions and shif 3 bytes
+    //has the same group
+    if(inode.OwnerGroupID != 0 && inode.OwnerGroupID == users[currentUser].groupID){
+
+        // select group permissions and shift 3 bytes
         mask = 0070;
         tmp = (mask & inode.Permissions);
         tmp = (tmp >> 3);
@@ -105,17 +109,17 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
         }
     }
 
-    //none of them
-    else  {
-        
-        //select other permissions
-        mask = 0007;
-        tmp = (mask & inode.Permissions);
+    //group has  permission for mode
+    if((tmp & permissions) == mode)
+        return true;
 
-        permissions = tmp;
-    }
+    //select other permissions
+    mask = 0007;
+    tmp = (mask & inode.Permissions);
 
-    //has  permission for mode
+    permissions = mode;
+
+    //other has  permission for mode
     if((tmp & permissions) == mode)
         return true;
 
@@ -388,11 +392,11 @@ bool FileSystemAPI::deleteGroup(uint32_t groupID)
                 }
             }
 
+            printf("Group with name= %s and ID= %d deleted!\n", groups[i].groupname, groups[i].groupID);
+
             delete groups[i].groupname;
             delete groups[i].usersID;
             bitmapGroups[i] = false;
-
-            printf("Group with name= %s and ID= %d deleted!\n", groups[i].groupname, groups[i].groupID);
 
             return true;
         }
@@ -581,7 +585,6 @@ void FileSystemAPI::showFiles()
             printf("%s\t%d\t%d\t%d\t%o\n", inodes[i].Filename, inodes[i].OwnerUserID, inodes[i].OwnerGroupID, inodes[i].Size, inodes[i].Permissions);
         }
     }
-
 }
 
 bool FileSystemAPI::changeUserPermissions(uint32_t userID, uint32_t permissions)
@@ -800,6 +803,9 @@ void FileSystemAPI::writeImportantFile(const char *filename)
 
     //get the inumber for the current file
     inumber = myFileSystem->getInumber(filename);
+
+    if (inumber == -1)
+        return;
 
     data = new char[Disk::BLOCK_SIZE + 1]{};
 

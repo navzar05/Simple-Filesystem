@@ -58,7 +58,11 @@ enum class CommandType{
     IncorrectCommand,
     AllFilesCommand,
     OneFileCommand,
-    ChgFilePermCommand
+    ChgFilePermCommand,
+    ExitCommand,
+    ReturnCommand,
+    InstructionsCommand
+
 };
 
 class ShellProgram{
@@ -91,7 +95,10 @@ private:
     bool checkCredentials();
     bool checkRootPrivilege();
     bool checkCommand(const char *shellCommand, const char* userCommand);
-    bool checkParameters(const char *command, const char *parameters);
+    bool checkParameters(const char *line);
+    bool checkNoParamCommand(const char *command);
+    bool checkOneParamCommand(const char *command);
+    bool checkTwoParamCommand(const char *command);
 
     void prepareCommands();
     void executeCommands(char *line);

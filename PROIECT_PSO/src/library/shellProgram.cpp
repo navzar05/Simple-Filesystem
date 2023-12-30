@@ -153,16 +153,126 @@ bool ShellProgram::checkCommand(const char *shellCommand, const char *userComman
     return false;
 }
 
-bool ShellProgram::checkParameters(const char *command, const char *parameters)
+bool ShellProgram::checkParameters(const char *line)
 {
-    if(parameters == NULL && !checkCommand(ALL_FILES_COMMAND, command) && !checkCommand(SHOW_USERS_COMMAND, command) && !checkCommand(SHOW_GROUPS_COMMAND, command)){
-        if(!checkCommand(FORMAT_COMMAND, command) && !checkCommand(MOUNT_COMMAND, command) && !checkCommand(UMNOUNT_COMMAND, command)){
-            fprintf(stderr, "Invalid parameters!\n");
-            return false;
-        }
+    //declare variables
+    bool noParameters = false, oneParameter = false, twoParameters = false, flag = false;
+    char *command, *str, *token;
+
+    //create another token to check parameters
+    str = new char[strlen(line) + 1]{};
+    memcpy(str, line, (strlen(line) + 1));
+
+    //this should be the command
+    token = strtok(str, " \n");
+    command = new char[strlen(token) + 1]{};
+    memcpy(command, token, (strlen(token) + 1));
+
+    //this should be the first parameter
+    token = strtok(NULL, " \n");
+    if(token == NULL)
+        noParameters = true;
+    
+    // has no parameters like the command
+    if (noParameters && checkNoParamCommand(command))
+        flag = true;
+
+    // check if has one parameter
+    if (token != NULL){
+        token = strtok(NULL, " \n");
+        if (token == NULL)
+            oneParameter = true;
     }
 
-    return true;
+    // has one parameter like the command
+    if (oneParameter && checkOneParamCommand(command))
+        flag = true; 
+
+    // check for the second parameter
+    if (token != NULL){
+        token = strtok(NULL, "\n");
+        if (token == NULL)
+            twoParameters = true;
+    }
+
+    // has two parameters like the command
+    if(twoParameters && checkTwoParamCommand(command))
+        flag = true;
+        
+    delete[] command;
+    delete[] str;
+
+    if (flag)
+        return true;
+
+    fprintf(stderr, "Invalid command!\n");
+    return false;
+}
+
+bool ShellProgram::checkNoParamCommand(const char *command)
+{
+    bool flag = false;
+
+    if  (checkCommand(SHOW_GROUPS_COMMAND, command)|| checkCommand(SHOW_USERS_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(FORMAT_COMMAND, command) || checkCommand(MOUNT_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(ALL_FILES_COMMAND, command) || checkCommand(UMNOUNT_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(EXIT_COMMAND, command) || checkCommand(RETURN_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(INSTRUCTIONS_COMMAND, command))
+        flag = true;
+
+    if (flag)
+        return true;
+
+    return false;
+}
+
+bool ShellProgram::checkOneParamCommand(const char *command)
+{
+    bool flag = false;
+
+    if (checkCommand(READ_FILE_COMMAND, command) || checkCommand(ONE_FILE_COMMAND, command))
+        flag = true;
+    
+    else if (checkCommand(GROUP_ADD_COMMAND, command) || checkCommand(SET_GROUP_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(DELETE_USER_COMMAND, command) || checkCommand(DELETE_GROUP_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(CHANGE_USER_PERMISSIONS_COMMAND, command) || checkCommand(CHANGE_GROUP_PERMISSIONS_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(CREATE_FILE_COMMAND, command) || checkCommand(DELETE_FILE_COMMAND, command))
+        flag = true;
+
+    if (flag)
+        return true;
+
+    return false;
+}
+
+bool ShellProgram::checkTwoParamCommand(const char *command)
+{
+    bool flag = false;
+
+    if (checkCommand(COPY_IN_COMMAND, command) || checkCommand(COPY_OUT_COMMAND, command))
+        flag = true;
+
+    else if (checkCommand(COPY_COMMAND, command))
+        flag = true;
+
+    if (flag)
+        return true;
+
+    return false;
 }
 
 void ShellProgram::prepareCommands()
@@ -183,17 +293,17 @@ void ShellProgram::prepareCommands()
         }
 
         //see if exit, return, show info or execute commands
-        if(strncmp(EXIT_COMMAND, command, (strlen(command) + 1)) == 0)
-            exitFlag = true;
+        //if(strncmp(EXIT_COMMAND, command, (strlen(command) + 1)) == 0)
+            //exitFlag = true;
         
-        else if(strncmp(RETURN_COMMAND, command, (strlen(command) + 1)) == 0)
-            returnFlag = true;
+        //else if(strncmp(RETURN_COMMAND, command, (strlen(command) + 1)) == 0)
+            //returnFlag = true;
 
-        else if(strncmp(INSTRUCTIONS_COMMAND, command, (strlen(command) + 1)) == 0)
-            showInstructions();
+        //else if(strncmp(INSTRUCTIONS_COMMAND, command, (strlen(command) + 1)) == 0)
+            //showInstructions();
         
-        else 
-            executeCommands(command);
+        //else 
+        executeCommands(command);
     }
 }
 
@@ -204,6 +314,10 @@ void ShellProgram::executeCommands(char *line)
         return;
     }
 
+    //check if has parameters where are required
+    if(!checkParameters(line))
+        return;
+
     //initialise command and parameters
     char *parameters = strtok(line, " \n");
     char *command = new char[strlen(parameters) + 1]{};
@@ -211,10 +325,6 @@ void ShellProgram::executeCommands(char *line)
     //set command and parameters
     memcpy(command, parameters, strlen(parameters) + 1);
     parameters = strtok(NULL, " \n");
-
-    //check if has parameters where are required
-    if(!checkParameters(command, parameters))
-        return;
 
     //select command
     CommandType tmp = selectCommand(command);
@@ -319,6 +429,21 @@ void ShellProgram::executeCommands(char *line)
         //change file permissionss
         case CommandType::ChgFilePermCommand:
             chgFilePermCommand(parameters);
+            break;
+
+        // exit
+        case CommandType::ExitCommand:
+            exitFlag = true;
+            break;
+
+        // return
+        case CommandType::ReturnCommand:
+            returnFlag = true;
+            break;
+
+        // help
+        case CommandType::InstructionsCommand:
+            showInstructions();
             break;
 
         //incorrect command
@@ -447,6 +572,18 @@ CommandType ShellProgram::selectCommand(const char *command)
     else if(checkCommand(CHG_PERM_FILE_COMMAND, command))
         return CommandType::ChgFilePermCommand;
 
+    // exit
+    else if (checkCommand(EXIT_COMMAND, command))
+        return CommandType::ExitCommand;
+
+    // return 
+    else if (checkCommand(RETURN_COMMAND, command))
+        return CommandType::ReturnCommand;
+
+    // help
+    else if (checkCommand(INSTRUCTIONS_COMMAND, command))
+        return CommandType::InstructionsCommand;
+
     else
         return CommandType::IncorrectCommand;
 }
@@ -541,6 +678,14 @@ void ShellProgram::copyInCommand(char *parameters)
         return;
     }
 
+    //check permissions
+    if(!myAPI->hasPermissions(dst, WRITE_PERMISSION)){
+        fprintf(stderr, "User= %s doesn't have permissions for file= %s to write\n", username, dst);
+        delete[] src;
+        delete[] dst;
+        return;
+    }
+
     //read all from file on disk and write it on emulator
     while(!ferror(f) && !feof(f)){
         
@@ -574,6 +719,13 @@ void ShellProgram::copyOutCommand(char *parameters)
     //check has destination
     if(parameters == NULL){
         fprintf(stderr, "Incorrect parameters!\n");
+        delete[] src;
+        return;
+    }
+
+    //check permissions
+    if(!myAPI->hasPermissions(src, READ_PERMISSION)){
+        fprintf(stderr, "User= %s doesn't have permissions for file= %s to read\n", username, src);
         delete[] src;
         return;
     }
@@ -634,6 +786,14 @@ void ShellProgram::copyCommand(char *parameters)
     dst = new char[strlen(parameters) + 1]{};
     memcpy(dst, parameters, strlen(parameters) + 1);
 
+    //check permissions
+    if(!myAPI->hasPermissions(src, READ_PERMISSION) && !myAPI->hasPermissions(dst, WRITE_PERMISSION)){
+        fprintf(stderr, "User= %s doesn't have permissions top copy these files!\n", username);
+        delete[] src;
+        delete[] dst;
+        return;
+    }
+
     //get size
     size = myAPI->getSizeInode(src);
     if(size == 0)
@@ -665,9 +825,14 @@ void ShellProgram::readFileCommand(char *parameters)
             return;
     }
 
+    //check permissions
+    if(!myAPI->hasPermissions(parameters, READ_PERMISSION)){
+        fprintf(stderr, "User= %s doesn't have permissions for file= %s to read\n", username, parameters);
+        return;
+    }
+
     //set size
     size = myAPI->getSizeInode(parameters);
-
     if(size == 0)
         return;
 
