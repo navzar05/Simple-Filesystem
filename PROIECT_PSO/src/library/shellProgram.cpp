@@ -70,7 +70,7 @@ void ShellProgram::createAccount()
     printf("> Confirm password: ");
     readPassword(confirmPassword);
 
-    printf("password= %s confirmpassword= %s \n", password, confirmPassword);
+    //printf("password= %s confirmpassword= %s \n", password, confirmPassword);
 
     //check length
     if(strlen(username) < 3){
@@ -110,6 +110,7 @@ bool ShellProgram::login()
     //enter password
     printf("> Enter password: ");
     readPassword(password);
+    //printf("pass at login: %s\n", password);
 
     //check credentials and set current user if exists
     if(checkCredentials()){
@@ -266,7 +267,7 @@ bool ShellProgram::checkTwoParamCommand(const char *command)
     if (checkCommand(COPY_IN_COMMAND, command) || checkCommand(COPY_OUT_COMMAND, command))
         flag = true;
 
-    else if (checkCommand(COPY_COMMAND, command))
+    else if (checkCommand(COPY_COMMAND, command) || checkCommand(CHG_PERM_FILE_COMMAND, command))
         flag = true;
 
     if (flag)
@@ -291,18 +292,7 @@ void ShellProgram::prepareCommands()
         if(fgets(command, sizeof(command), stdin) != NULL){
             command[strcspn(command,"\n")] = '\0';
         }
-
-        //see if exit, return, show info or execute commands
-        //if(strncmp(EXIT_COMMAND, command, (strlen(command) + 1)) == 0)
-            //exitFlag = true;
         
-        //else if(strncmp(RETURN_COMMAND, command, (strlen(command) + 1)) == 0)
-            //returnFlag = true;
-
-        //else if(strncmp(INSTRUCTIONS_COMMAND, command, (strlen(command) + 1)) == 0)
-            //showInstructions();
-        
-        //else 
         executeCommands(command);
     }
 }
@@ -603,7 +593,21 @@ void ShellProgram::setGrpCommand(char *parameters)
 void ShellProgram::chUsrPermCommand(char *parameters)
 {
     if(checkRootPrivilege()){
-        size_t permissions = atoi(parameters);
+        printf("parameters: %s\n", parameters);
+        char *convertPointer;
+        uint32_t permissions;
+
+        permissions = strtol(parameters, &convertPointer, 8);
+
+        if( (*convertPointer) != '\0'){
+            fprintf(stderr, "Failed to convert in octal!\n");
+            return;
+        }
+
+        if (permissions > 7 || permissions < 0){
+            fprintf(stderr, "Wrong permissions given!\n");
+            return;
+        }
 
         myAPI->changeUserPermissions(userID, permissions);
     }
@@ -612,7 +616,22 @@ void ShellProgram::chUsrPermCommand(char *parameters)
 void ShellProgram::chGrpPermCommand(char *parameters)
 {
     if(checkRootPrivilege()){
-        size_t permissions = atoi(parameters);
+        printf("parameters: %s\n", parameters);
+        char *convertPointer;
+        uint32_t permissions;
+
+        permissions = strtol(parameters, &convertPointer, 8);
+
+        if( (*convertPointer) != '\0'){
+            fprintf(stderr, "Failed to convert in octal!\n");
+            return;
+        }
+
+        if (permissions > 7 || permissions < 0){
+            fprintf(stderr, "Wrong permissions given!\n");
+            return;
+        }
+
         myAPI->changeGroupPermissions(groupID, permissions);
     }
 }
@@ -679,7 +698,7 @@ void ShellProgram::copyInCommand(char *parameters)
     }
 
     //check permissions
-    if(!myAPI->hasPermissions(dst, WRITE_PERMISSION)){
+    if( !myAPI->hasPermissions(dst, WRITE_PERMISSION)){
         fprintf(stderr, "User= %s doesn't have permissions for file= %s to write\n", username, dst);
         delete[] src;
         delete[] dst;
@@ -912,9 +931,10 @@ void ShellProgram::chgFilePermCommand(char *parameters)
     if( (*convertPointer) != '\0'){
         fprintf(stderr, "Failed to convert in octal!\n");
         delete[] filename;
+        return;
     }
 
-    if(permissions > 0777){
+    if(permissions > 0777 | permissions < 0){
         fprintf(stderr, "Wrong permissions given!\n");
         delete[] filename;
         return;
@@ -960,11 +980,11 @@ void ShellProgram::readPassword(char *pswd)
 void ShellProgram::fflushInputBuffer()
 {
     int c;
-    printf("chars in buffer=");
+    //printf("chars in buffer=");
     while((c = getchar()) != '\n' && c != EOF){
-        printf(" %c", c);
+        //printf(" %c", c);
     }
-    printf("\n");
+    //printf("\n");
 }
 
 void ShellProgram::showInstructions()
@@ -977,20 +997,21 @@ void ShellProgram::showInstructions()
     printf("%s\t-\tshow stats of all files\n", ALL_FILES_COMMAND);
     printf("%s\t-\tformat File System\n", FORMAT_COMMAND);
     printf("%s\t-\tmount File System\n", MOUNT_COMMAND);
-    printf("%s\t-\tunount File System\n", UMNOUNT_COMMAND);
+    printf("%s\t-\tunmount File System\n", UMNOUNT_COMMAND);
     printf("%s\t-\treturn to start menu\n", RETURN_COMMAND);
     printf("%s\t-\texit from application\n", EXIT_COMMAND);
 
     printf("%s <filename>\t-\tprint file\n", READ_FILE_COMMAND);
     printf("%s <filename>\t-\tshow file's stats\n", ONE_FILE_COMMAND);
     printf("%s <groupname>\t-\tcreate group\n%s <groupname>\t-\tset group for current user\n", GROUP_ADD_COMMAND, SET_GROUP_COMMAND);
-    printf("%s <username>\t-\tdeletet user (required root privilege)\n", DELETE_USER_COMMAND);
-    printf("%s <groupname>\t-\tdelete group (required root privilege)\n", DELETE_GROUP_COMMAND);
+    printf("%s <username>\t-\tdelete user (require root privilege)\n", DELETE_USER_COMMAND);
+    printf("%s <groupname>\t-\tdelete group (require root privilege)\n", DELETE_GROUP_COMMAND);
     printf("%s <permissions>\t-\tchange permissions for current user\n", CHANGE_USER_PERMISSIONS_COMMAND);
     printf("%s <permissions>\t-\tchange permissions for current user's group\n", CHANGE_GROUP_PERMISSIONS_COMMAND);
     printf("%s <filename>\t-\tcreate file\n", CREATE_FILE_COMMAND);
     printf("%s <filename>\t-\tdelete file\n", DELETE_FILE_COMMAND);
     
+    printf("%s <filename> <permissions>\t-\tchange file's permissions (require root privilege)\n", CHG_PERM_FILE_COMMAND);
     printf("%s <src> <dest>\t-\tcopy from disk to emulator\n", COPY_IN_COMMAND);
     printf("%s <src> <dest>\t-\tcopy from emulator to disk\n", COPY_OUT_COMMAND);
     printf("%s <src> <dest>\t-\tcopy from emulator to emulator\n", COPY_COMMAND);

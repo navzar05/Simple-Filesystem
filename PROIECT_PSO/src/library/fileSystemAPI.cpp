@@ -35,7 +35,7 @@ FileSystemAPI::FileSystemAPI(Disk *disk_path, size_t disk_blocks)
 
     //create important files
     createFile(USERS_FILE, 1, 1, 0644);
-    createFile(PASSWORDS_FILE, 1, 1, 0600);
+    createFile(PASSWORDS_FILE, 1, 1, 0644);
     createFile(GROUPS_FILE, 1, 1, 0644);
 
     //read if was data before start the File System
@@ -88,6 +88,7 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     
         //select from current user his permissions
         permissions = (users[currentUser].permissions & mode);
+        //printf("tmp = %o userPermissions = %o\n", tmp, permissions);
     }
 
     //user has  permission for mode
@@ -123,7 +124,7 @@ bool FileSystemAPI::hasPermissions(const char *filename, uint32_t mode)
     if((tmp & permissions) == mode)
         return true;
 
-    fprintf(stderr, "User= %s doesn't have permissions for mode= %d on file= %s\n", users[currentUser].username, mode, filename);
+    //fprintf(stderr, "User= %s doesn't have permissions for mode= %d on file= %s\n", users[currentUser].username, mode, filename);
     return false;
 }
 
@@ -211,7 +212,7 @@ bool FileSystemAPI::createUser(const char *username, const char *password, uint3
     bitmapUsers[users[index_user].userID] = true;
     totalUsers++;
 
-    printf("User= %s with pass= %s and ID= %d created!\n", users[index_user].username, users[index_user].password, users[index_user].userID);
+    //printf("User= %s with pass= %s and ID= %d created!\n", users[index_user].username, users[index_user].password, users[index_user].userID);
 
     return true;
 }
@@ -537,7 +538,7 @@ void FileSystemAPI::showUsers()
 
         //if ID is valid
         if(users[i].userID){ 
-            printf("%d. User= %s with id= %d and group= %d\n", (i + 1), users[i].username, users[i].userID, users[i].groupID);
+            printf("%d. User= %s with id= %d, group= %d and permissions= %o\n", (i + 1), users[i].username, users[i].userID, users[i].groupID, users[i].permissions);
         }
     }
 }
@@ -695,7 +696,7 @@ void FileSystemAPI::readUsersFile(const char *token, int index)
     //read username 
     users[index].username = new char[strlen(token) + 1]{};
     memcpy(users[index].username, token, strlen(token));
-    printf("username= %s\n", token);
+    //printf("username= %s\n", token);
     token = strtok(NULL, ":");
 
     //ignore password
@@ -703,17 +704,17 @@ void FileSystemAPI::readUsersFile(const char *token, int index)
 
     //take userID
     users[index].userID = atoi(token);
-    printf("userID= %d\n", atoi(token));
+    //printf("userID= %d\n", atoi(token));
     token = strtok(NULL, ":");
 
     //take groupID
     users[index].groupID = atoi(token);
-    printf("user's groupID= %d\n", atoi(token));
+    //printf("user's groupID= %d\n", atoi(token));
     token = strtok(NULL, "\n");
 
     //take permissions
     users[index].permissions = atoi(token);
-    printf("user's permissions: %d\n", users[index].groupID);
+    //printf("user's permissions: %d\n", users[index].groupID);
 
     //set bitmap for users
     bitmapUsers[users[index].userID] = true;
